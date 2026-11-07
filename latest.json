@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.3",
-    "date": "2026-11-07",
-    "notes": "新しい版の確かめ: 起動の後に1日1回だけ、公式リポジトリの版の情報を読み、新しい版があれば下端のバーで知らせます（受け取るだけで、何も送りません）。［更新］で、落として SHA-256 を確かめてから入れ替え、開いていた文書を引き継いで起ち直します。⚙️ →「全般」の 🆕 …",
+    "version": "v0.4.3c",
+    "date": "2026-11-08",
+    "notes": "書き方の検査: `#見出し`（# の後の空白なし）・効かない `**`・表の列のずれ・閉じていないコード・行き先の無いリンク・図や数式の誤り・取り除いた HTML を、下端の「⚠ 件数」の一覧とエディタの行の印で知らせます",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3/gnDoc.exe",
-      "size": 4386816,
-      "sha256": "01b8e09f1edbfa05fbda5a2d8b461af551645455e44f7695c7cacc3ede38e028"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3c/gnDoc.exe",
+      "size": 4411392,
+      "sha256": "b98a014621e3008e4dd923a12792b590291ad813b97cf9d9763ebc6fcdaf1f96"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.3",
+    "version": "v0.4.3c",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "0eda49555d9fcdd28ef4e870b3ba314cebd6c768717eb49a13489bfce96efa19"
+    "sha256": "e2e8444fb28eca5e1644e33fba2a62ca0fbcfb4363d42944db026c61e400666e"
   }
 }
