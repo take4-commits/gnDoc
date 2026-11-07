@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<!--
+    gnDocRd-sample.html — gnDocRd.js（gnDoc 記法の描画ライブラリ）の使い方の見本。MIT License. Copyright (c) 2026 take4.
+    このページの中の Markdown（<script type="text/markdown">）を、gnDocRd.js で描く。
+
+    置き方（同じフォルダに3つ）:
+      gnDocRd-sample.html … このページ
+      gnDocRd.js          … gnDoc 記法の描画ライブラリ（縮めた gnDocRd.min.js に置き換えてもよい。中身は同じ）
+      gnDocRd-libs.js     … gnDocRd が頼るライブラリ（marked・Mermaid・KaTeX ほか）。gnDocRdLibGen.html で作る（作者は配らない）
+    記法の詳しい仕様は、gnDoc.exe 付属のドキュメント（README・チートシート・サンプル集）を見てください。
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gnDocRd の使い方の見本</title>
+<!-- ① 頼るライブラリを先に。② gnDocRd.js -->
+<script src="gnDocRd-libs.js"></script>
+<script src="gnDocRd.js"></script>
+<!--
+    ここの style は、この見本のページだけの見た目（ページの地の色・文書を載せる白い枠・案内の帯・書き換えの欄）。
+    **gnDoc 記法の見た目は、ここには要らない。** gnDocRd.js が描くときに <style id="gnDocRd-css"> を自分で入れる
+    （記法の CSS と、表・コード・図の大きさなどの基本の見た目。描く先には class="gnDocRd" が付く）。
+    自分のページで使うときは、この style を消すか、自分のページの見た目に書き換えてよい。
+    gnDocRd.js に入れないわけ:
+      - gnDocRd.js は LibGen.html・gnDocRdLibGen.html も読む。body や main の規則を入れると、それらの画面の見た目まで変わる
+      - 使う人のページの body・main・id をライブラリが書き換えると、そのページの作りとぶつかる
+    gnDocRd の基本の見た目を変えたいときは、この下に .gnDocRd … の規則を書けば勝つ（gnDocRd の style は head の先頭に入るので、後に書いた方が効く）。
+    地の色・枠の色・文字の色は CSS の変数 --bg-color・--border-color・--text-color で変えられる（例: :root { --text-color: #222; }）。
+-->
+<style>
+    body { margin: 0; background: #f3f4f6; font-family: "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif; }
+    main { max-width: 980px; margin: 24px auto; padding: 32px 40px; background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    #libs-missing { display: none; max-width: 980px; margin: 24px auto; padding: 16px 20px; border: 2px solid #d97706; border-radius: 8px; background: #fffbeb; line-height: 1.7; }
+    #libs-missing.show { display: block; }
+    .src-panel { max-width: 980px; margin: 0 auto 32px; }
+    .src-panel textarea { box-sizing: border-box; width: 100%; height: 320px; font: 13px/1.5 Consolas, monospace; }
+    .src-panel button { margin-top: 6px; padding: 4px 14px; }
+    /* 印刷の帯（この見本のページの部品）。紙には刷らない */
+    .print-bar { max-width: 980px; margin: 16px auto 0; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-size: 14px; }
+    .print-bar button { padding: 4px 14px; }
+    @media print {
+        .print-bar, .src-panel, #libs-missing { display: none !important; }
+        body { background: #fff; }
+        main { max-width: none; margin: 0; padding: 0; box-shadow: none; }
+    }
+</style>
+</head>
+<body>
+
+<div id="libs-missing">
+    <b>gnDocRd-libs.js が読み込めませんでした。</b><br>
+    このページと同じフォルダで <code>gnDocRdLibGen.html</code> を開き、「生成」で <code>gnDocRd-libs.js</code> を作って置いてください
+    （gnDoc.exe を使っているなら、exe の隣に LibGen.html で作った物があります。それを写しても使えます）。
+</div>
+
+<!-- 印刷（v0.4.1）。Ctrl+P でも、下のボタンでも、gnDoc と同じ紙面で刷れる（図の大きさ・紙の上と下・透かし・PDF の中のリンク） -->
+<div class="print-bar" id="print-bar">
+    <b>印刷</b>
+    <label><input type="checkbox" id="pr-header" checked> 上に文書名と日時</label>
+    <label><input type="checkbox" id="pr-footer" checked> 下にページ番号</label>
+    <label>透かし <input id="pr-wm" size="12" placeholder="空なら付けない"></label>
+    <button type="button" id="pr-open">🖨 写しの窓で刷る</button>
+    <span>（Ctrl+P でも同じ紙面）</span>
+    <button type="button" id="ex-html">💾 単一HTMLに書き出す</button>
+    <!-- 新しい版を確かめる（v0.4.3）。押したときだけ公式リポジトリの latest.json を読む（Cookie・リファラーは送らない） -->
+    <button type="button" id="upd-check" title="押したときだけ、公式リポジトリ（GitHub）で gnDocRd の新しい版を確かめます。何も送りません">🆕 新しい版を確かめる</button>
+    <span id="upd-result"></span>
+</div>
+
+<main id="doc"></main>
+
+<details class="src-panel">
+    <summary>この見本の Markdown（書き換えて「描き直す」）</summary>
+    <textarea id="src" spellcheck="false"></textarea>
+    <button type="button" id="redraw">描き直す</button>
+</details>
+
+<script type="text/markdown" id="sample-md" data-target="#doc">
+# gnDocRd の使い方の見本
+
+このページは、**gnDocRd.js**（gnDoc 記法の描画ライブラリ）で Markdown を描いた見本です。
+下の記法は gnDoc（gnDoc.exe）と同じ見た目で描かれます。
+
+> [!NOTE]
+> 記法の詳しい仕様は、**gnDoc.exe 付属のドキュメント**（❓ ヘルプの 📖 ReadMe・⌨️ チートシート・📊 サンプル集）を見てください。
+
+## 1. 使い方
+
+同じフォルダに `gnDocRd-libs.js`（頼るライブラリ。`gnDocRdLibGen.html` で作る）と `gnDocRd.js` を置き、この順で読み込みます。
+
+```html
+<script src="gnDocRd-libs.js"><\/script>
+<script src="gnDocRd.js"><\/script>
+
+<div id="out"></div>
+<script>
+  gnDocRd.render('#out', '# 見出し\n\n{red:赤い字} と [[枠囲み]]');
+<\/script>
+```
+
+ページの中に Markdown を書くときは `<script type="text/markdown">` に入れて `gnDocRd.renderScripts()` を呼びます（このページのやり方）。
+その中で script の閉じの札を書くときは、`/` の前に `\` を入れます（入れないと、そこで外側の札が終わってしまうため。上の例もそう書いてあります）。
+
+| 入口 | 働き |
+| :--- | :--- |
+| `await gnDocRd.render(描く先, Markdown)` | 描く先（要素か選択子）へ描く。図・線まで描き終えてから戻る |
+| `await gnDocRd.renderScripts()` | `<script type="text/markdown">` の中身を、その直後（`data-target` があればその先）へ描く。このページはこれ |
+| `gnDocRd.toHtml(Markdown)` | HTML の文字列だけ（図はまだ描かれていない） |
+
+外部サーバーで描く図（PlantUML・DBML・D2・Graphviz）は、**既定では送りません**（図のソースが外へ出るため）。
+使うときは送り先を渡します: `gnDocRd.render('#out', md, { endpoints: { plantuml: 'https://kroki.io/plantuml' } })`。
+
+## 2. 文字の装飾
+
+**太字** / *斜体* / ~~取消~~ / `コード` / ==ハイライト== / ++下線++ / X^2^ / H~2~O / :warning: :+1:
+
+{red:赤} {blue:青} {dkGreen:濃い緑} {ltltBlue:極淡は地に塗る} {#3366cc:任意の色}。[[枠囲み]] と [[red:色付きの枠]]。
+
+## 3. 表に色を付ける
+
+{theme=青 border=grid width="50%, 25%, 25%"}
+| 点検項目 | 判定 | 実施日 |
+| :--- | :---: | ---: |
+| 非常停止装置 | 良 | 9/12 |
+| 光線式安全装置 | {red:**要調整**} | 9/13 |
+
+## 4. 装飾枠と注記
+
+```decoBd{"安全上の注意" 赤}
+- **非常停止装置**は毎日点検すること
+- 施錠の確認を怠らないこと
+```
+
+> [!WARNING]
+> 電源を切ってから作業すること
+
+## 5. 数式
+
+文中に $P = V \cdot I$ と書けます。
+
+$$ S = K \times (T_r + T_m + T_c) + C_{kr} $$
+
+$\ce{2H2 + O2 -> 2H2O}$
+
+## 6. フロー図
+
+図: 申請の流れ
+
+```flow
+[受付]{青}
+->
+[審査]
+->
+[承認]{緑}
+
+3 -> 1 {label="差戻し" bs=dashed}
+```
+
+### 枠つきのフロー図
+
+```flow
+[[安全装置側]]{青}
+[光線式安全装置] → [セーフティリレーユニット]
+
+- - - 責任の分かれ目 - - -
+セーフティリレーユニット ⇒ 停止入力
+
+[[プレス機械側]]{橙}
+[停止入力]
+↓
+[スライドが止まる]
+```
+
+## 7. 部品
+
+```kpi
+不良率 | 0.12% | ↓ 前月比
+稼働率 | 94.5% | → 横ばい
+納期遵守 | 98% | ↑ 目標達成
+```
+
+```timeline
+2024-01 | 要件定義開始
+2024-03 | 試作完了 | 里程碑
+2025-01 | 改訂 v2 | 重要
+```
+
+## 8. 同梱のライブラリで描く図
+
+```mermaid
+flowchart LR
+    A[入力] --> B{判定}
+    B -->|OK| C[次工程]
+    B -->|NG| D[差戻し]
+```
+
+```csv-chart
+type: bar
+title: 月別の実績
+---
+月, 件数
+4月, 42
+5月, 38
+6月, 51
+```
+
+```wavedrom
+{signal:[{name:'clk',wave:'P....'},{name:'dat',wave:'x.34x',data:['A','B']}]}
+```
+
+```markmap
+# gnDocRd
+## 記法を読む
+- 色・枠
+- 表の色
+## 描く
+- flow
+- Mermaid
+```
+
+## 9. 印刷
+
+描いた文書は、**Ctrl+P（ブラウザの印刷）で gnDoc と同じ紙面**になります（`render` が自動で結び付けます。`{ print: false }` で付けない）。
+
+| 入口 | 働き |
+| :--- | :--- |
+| `gnDocRd.render(描く先, md, { print: 設定 })` | 描いて、Ctrl+P の紙面を設定どおりにする |
+| `gnDocRd.print.enable(描く先, 設定)` | あとから設定を変える（このページの「印刷」の帯はこれ） |
+| `await gnDocRd.print.openCopy(描く先, 設定)` | 🖨 と同じく、写しを新しい窓で開いて刷る |
+| `await gnDocRd.print.copyHtml(描く先, 設定)` | 写しの文書（HTML の文字列）。PDF を作る道具へ渡すときなど |
+
+設定: `header`（上に文書名と日時）・`footer`（下にページ番号）・`name`（文書名。「PDF に保存」の既定のファイル名にも）・`watermark`（透かし。`'下書き'` か `{ text, layout: 'tile', layer: 'back', opacity: 15, size: 150 }`）。
+
+- **図は紙の幅いっぱい**に刷ります。縦に長い図は頁の高さに合わせて縮め、小さい図は元の大きさより広げません
+- 図ごとの印刷の幅は、フェンスに `{print=60%}` と書きます（下の図）
+- 文書の中に `<!-- gd-watermark: 下書き 敷き詰め 背面 15% -->` と書くと、その文書だけ透かしが付きます（行の頭に書く）
+- 文書の中のリンク（`[…](#見出し)`）は、「PDF に保存」した PDF の中でも飛べます。改ページは `<PB>`
+
+```flow{print=60%}
+[描く]{青}
+->
+[刷る]{緑}
+```
+
+### 単一HTMLの書き出し
+
+描いた文書を、**1つのファイルで開ける HTML** にできます（図は描いた物のまま入り、ライブラリは要りません。gnDoc の 💾🌐 と同じ物）。
+
+| 入口 | 働き |
+| :--- | :--- |
+| `await gnDocRd.exportHtml(描く先, 設定)` | HTML の文字列 |
+| `await gnDocRd.downloadHtml(描く先, 'ファイル名', 設定)` | ダウンロードする（このページの「💾 単一HTMLに書き出す」はこれ） |
+
+設定: `name`（題名）・`toc: false`（右の見出しの一覧を付けない）・`theme: 'dark'` か `'sepia'`（地の色）・`watermark`（刷るときの透かし）。
+
+<details>
+<summary>書き出した HTML でできること</summary>
+
+- 右の見出しの一覧から飛ぶ・折りたたみを「全展開」「全折りたたみ」で開け閉めする
+- 刷ると、このページと同じ紙面（図の大きさ・透かし）になる
+- 外部サーバーで描いた図（PlantUML など）の画像も中に入る
+
+</details>
+
+## 10. コード
+
+```js
+// 描いたあとに何かするとき
+const el = await gnDocRd.render('#out', md);
+console.log(el.querySelectorAll('svg').length, '個の図');
+```
+
+---
+
+gnDocRd.js — MIT License. Copyright (c) 2026 take4。記法の詳しい仕様は gnDoc.exe 付属のドキュメントを見てください。
+</script>
+
+<script>
+(async () => {
+    const sample = document.getElementById('sample-md');
+    const src = document.getElementById('src');
+    // 頼るライブラリが無い（gnDocRd-libs.js を置いていない・読み込めない）
+    if (typeof gnDocRd === 'undefined' || !gnDocRd.marked) {
+        document.getElementById('libs-missing').classList.add('show');
+        return;
+    }
+    // 印刷の設定（帯の値）。透かしが空なら、文書の中の指定（<!-- gd-watermark: … -->）があるときだけ付く
+    const printOpts = () => ({
+        header: document.getElementById('pr-header').checked,
+        footer: document.getElementById('pr-footer').checked,
+        name: 'gnDocRd の使い方の見本',
+        watermark: document.getElementById('pr-wm').value.trim() || undefined,
+    });
+    // ページの中の Markdown を描く（Ctrl+P の紙面も、この設定で結び付く）
+    await gnDocRd.renderScripts(undefined, { print: printOpts() });
+    // 帯の値を変えたら、印刷の設定を変える
+    document.getElementById('print-bar').addEventListener('change', () => gnDocRd.print.enable('#doc', printOpts()));
+    document.getElementById('pr-open').addEventListener('click', () => gnDocRd.print.openCopy('#doc', printOpts()));
+    document.getElementById('ex-html').addEventListener('click', () => gnDocRd.downloadHtml('#doc', 'gnDocRd-見本.html', printOpts()));
+    // 書き換えて描き直す（見本の Markdown を、そのまま textarea に）
+    src.value = sample.textContent.split('<\\/script>').join('<\/script>').replace(/^\n/, '');
+    document.getElementById('redraw').addEventListener('click', () => gnDocRd.render('#doc', src.value, { print: printOpts() }));
+    // 新しい版を確かめる（gnDocRd.checkUpdate は呼んだときだけ通信する。force で覚えた結果を使わない）
+    document.getElementById('upd-check').addEventListener('click', async () => {
+        const out = document.getElementById('upd-result');
+        out.textContent = '確かめています…';
+        const r = await gnDocRd.checkUpdate({ force: true });
+        if (r.error) out.textContent = '確かめられませんでした（' + r.error + '）';
+        else if (r.newer) { out.textContent = '新しい版 ' + r.latest + ' があります（今は ' + r.current + '）。'; if (r.url) { const a = document.createElement('a'); a.href = r.url; a.textContent = 'gnDocRd.js'; a.target = '_blank'; a.rel = 'noopener'; out.append(a); } }
+        else out.textContent = '最新の版です（' + r.current + '）';
+    });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# 改行は LF で持つ。作業コピーでも変換しない。
+# （Windows の autocrlf に任せると、チェックアウトのたびに全行が書き換わる）
+* text=auto eol=lf
+
+# バイナリは触らせない。
+# **sample_gnDoc.pdf は、指定しないと Git がテキストと誤判定する**（実測）。
+# そのまま入れるとチェックアウト時に改行変換で壊れる。
+*.pdf  binary
+*.zip  binary
+*.png  binary
+*.ico  binary
+*.icns binary
+*.svg  text eol=lf

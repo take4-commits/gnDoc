@@ -1,0 +1,17 @@
+{
+  "gnDoc": {
+    "version": "v0.4.3",
+    "date": "2026-11-07",
+    "notes": "新しい版の確かめ: 起動の後に1日1回だけ、公式リポジトリの版の情報を読み、新しい版があれば下端のバーで知らせます（受け取るだけで、何も送りません）。［更新］で、落として SHA-256 を確かめてから入れ替え、開いていた文書を引き継いで起ち直します。⚙️ →「全般」の 🆕 …",
+    "exe": {
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3/gnDoc.exe",
+      "size": 4386816,
+      "sha256": "01b8e09f1edbfa05fbda5a2d8b461af551645455e44f7695c7cacc3ede38e028"
+    }
+  },
+  "gnDocRd": {
+    "version": "v0.4.3",
+    "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
+    "sha256": "0eda49555d9fcdd28ef4e870b3ba314cebd6c768717eb49a13489bfce96efa19"
+  }
+}

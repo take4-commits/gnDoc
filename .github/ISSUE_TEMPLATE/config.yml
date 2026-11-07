@@ -1,0 +1,25 @@
+blank_issues_enabled: true
+contact_links:
+  - name: ⚠️ サポートについて（必ずお読みください）
+    url: https://github.com/take4-commits/gnDoc/blob/main/README.md
+    about: >-
+      本アプリは個人が趣味で作成・公開しているものです。サポート、ご要望への対応、
+      不具合修正のいずれも保証しておらず、Issue への返信も原則として行っておりません。
+      不具合の記録としての起票は歓迎しますが、対応をお約束できない点をご了承ください。
+  - name: 📄 初回セットアップ（ライブラリの生成）
+    url: https://github.com/take4-commits/gnDoc/blob/main/README.md#22-初めて起動したときライブラリの生成
+    about: >-
+      文書や図・数式が表示されない場合、多くは gnDocRd-libs.js・gnDoc-app-libs.js が未生成です。
+      gnDoc.exe の画面上部の案内「🦉 LibGen.html を開く」から生成してください（初回の一度だけ）。
+  - name: 📧 商用・組織利用のライセンス申請
+    url: https://github.com/take4-commits/gnDoc/blob/main/LICENSE.md
+    about: >-
+      組織での標準採用・営利利用には事前の許諾が必要です。LICENSE.md 第9条の
+      窓口（メール）へご連絡ください。Issue ではお受けしていません。
+  - name: 🔗 再配布について（紹介はリンクでお願いします）
+    url: https://github.com/take4-commits/gnDoc/blob/main/LICENSE.md
+    about: >-
+      取得は誰でも自由ですが、配布元は本リポジトリ1本に保っています。
+      配布サイト・まとめサイト・公開ストレージ・ミラーリポジトリ等へのアップロードは
+      禁止です（古い版や古い規約が流通し、修正を届けられなくなるため）。
+      ご紹介いただく際は、ファイルを置かずに本リポジトリへリンクしてください。

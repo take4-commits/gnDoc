@@ -1,0 +1,9 @@
+# gnDocRd が頼るライブラリ（第三者の物の結合物）。使う人が gnDocRd/gnDocRdLibGen.html で作る（LICENSE.md 第2条(3)）
+gnDocRd-libs.js
+
+# OS・エディタ
+Thumbs.db
+Desktop.ini
+.DS_Store
+*~
+*.swp

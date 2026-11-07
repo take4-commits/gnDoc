@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gnDocRd LibGen</title>
+    <!--
+    gnDocRdLibGen.html — gnDocRd（gnDoc 記法の描画ライブラリ）が頼るライブラリを、試験済みの版で1本（gnDocRd-libs.js）に束ねる画面。
+    MIT License. Copyright (c) 2026 take4. https://github.com/take4-commits/gnDoc （全文は gnDocRd.js の先頭）
+
+    - エンジンと版の表は gnDocRd.js の gnDocRd.libgen（このページはそれを読むだけ）。gnDoc の LibGen.html も同じ gnDocRd.js を使う。
+    - 作る物は第三者のソフトウェアの結合物。各ライブラリの著作権はそれぞれの権利者にあり、利用条件は各ライセンスに従う（先頭に一覧を書く）。
+    - 取得にはインターネット接続が要る（jsDelivr・cdnjs）。file:// で取得が塞がれる環境では、ローカル Web サーバー経由で開く。
+    -->
+    <style>
+        :root {
+            --bg: #f4f7f6; --card: #ffffff; --text: #1f2937; --sub: #6b7280; --primary: #2563eb; --primary-hover: #1d4ed8;
+            --log-bg: #1e1e1e; --log-text: #d4d4d4; --border: #e5e7eb; --code-bg: rgba(0, 0, 0, 0.06);
+        }
+        @media (prefers-color-scheme: dark) {
+            :root { --bg: #111827; --card: #1f2937; --text: #e5e7eb; --sub: #9ca3af; --border: #374151; --code-bg: rgba(255, 255, 255, 0.08); }
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans JP", sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px 16px; line-height: 1.6; }
+        .container { max-width: 860px; margin: 0 auto; background: var(--card); padding: 24px; border-radius: 12px; border: 1px solid var(--border); }
+        h1 { margin-top: 0; font-size: 1.4rem; border-bottom: 2px solid var(--primary); padding-bottom: 8px; }
+        p, li { color: var(--sub); font-size: 0.92rem; }
+        code { background: var(--code-bg); padding: 1px 4px; border-radius: 4px; }
+        table { border-collapse: collapse; width: 100%; font-size: 0.85rem; margin: 8px 0 16px; }
+        th, td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; }
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        button { padding: 12px 18px; font-size: 1rem; font-weight: bold; color: #fff; background: var(--primary); border: none; border-radius: 8px; cursor: pointer; }
+        button.sub { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
+        button:hover:not(:disabled) { background: var(--primary-hover); color: #fff; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #log { background: var(--log-bg); color: var(--log-text); font-family: Consolas, Monaco, monospace; padding: 14px; border-radius: 8px; height: 320px; overflow-y: auto; margin-top: 16px; font-size: 0.82rem; display: none; }
+        #log div { margin: 2px 0; word-break: break-all; }
+        .success { color: #4ade80; } .error { color: #f87171; } .warn { color: #fbbf24; } .info { color: #9ca3af; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📦 gnDocRd LibGen</h1>
+    <p>gnDoc 記法の描画ライブラリ <strong>gnDocRd</strong> が頼るライブラリ（marked・Mermaid・KaTeX ほか）を、<strong>試験済みの版</strong>で取得し、
+        1本の <code>gnDocRd-libs.js</code> にまとめてダウンロードします。ページで <code>&lt;script src="gnDocRd-libs.js"&gt;</code> と読み込めば、オフラインで描けます。</p>
+    <p>作る物は第三者のオープンソースソフトウェアの結合物です。各ライブラリの著作権はそれぞれの権利者にあり、利用条件は各ライセンスに従います
+        （ファイルの先頭に一覧を書きます）。配るときは各ライセンスの条件を守ってください。</p>
+    <table id="lib-table"><thead><tr><th>ライブラリ</th><th>版</th><th>ライセンス</th></tr></thead><tbody></tbody></table>
+    <div class="actions">
+        <button id="gen" type="button">⚡ 生成してダウンロード</button>
+        <button id="upd" type="button" class="sub">新しい版を調べる</button>
+    </div>
+    <div id="log"></div>
+</div>
+<script src="gnDocRd.js"></script>
+<script>
+    (function () {
+        const RD = window.gnDocRd && window.gnDocRd.libgen;
+        const logEl = document.getElementById('log');
+        const log = (msg, type = 'info') => {
+            logEl.style.display = 'block';
+            const d = document.createElement('div');
+            d.className = type;
+            d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logEl.appendChild(d);
+            logEl.scrollTop = logEl.scrollHeight;
+        };
+        if (!RD) { log('gnDocRd.js を読み込めませんでした。このページと同じフォルダに置いてください。', 'error'); return; }
+        const tbody = document.querySelector('#lib-table tbody');
+        for (const l of [...RD.LIBS, ...RD.THEMES]) {
+            const tr = document.createElement('tr');
+            for (const v of [l.name, l.version, l.license || '']) { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); }
+            tbody.appendChild(tr);
+        }
+        const gen = document.getElementById('gen'), upd = document.getElementById('upd');
+        gen.addEventListener('click', async () => {
+            gen.disabled = upd.disabled = true;
+            logEl.innerHTML = '';
+            try {
+                const text = await RD.generate({ log });
+                const url = URL.createObjectURL(new Blob([text], { type: 'application/javascript;charset=utf-8' }));
+                const a = document.createElement('a');
+                a.href = url; a.download = RD.FILE_NAME;
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                log(`${RD.FILE_NAME} をダウンロードしました（${(text.length / 1048576).toFixed(2)} MB）`, 'success');
+            } catch (e) {
+                log('生成できませんでした: ' + e.message, 'error');
+            } finally {
+                gen.disabled = upd.disabled = false;
+            }
+        });
+        upd.addEventListener('click', async () => {
+            upd.disabled = true;
+            log('npm の最新の版と比べています...', 'info');
+            const out = await RD.checkUpdates({ log });
+            if (!out.length) log('表の版はどれも最新です。', 'success');
+            upd.disabled = false;
+        });
+    })();
+</script>
+</body>
+</html>
