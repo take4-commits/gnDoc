@@ -7,8 +7,8 @@
 > **簡易プレゼン・読み上げ・単一HTMLエクスポート・印刷・簡易編集・オフライン動作を内蔵。**
 > コードブロックに言語名を書くだけで、そこに図が描かれます。
 
-* **対象バージョン**: gnDoc (mdView) `v0.4.3`
-* **最終改訂日**: 2026-11-07 JST
+* **対象バージョン**: gnDoc (mdView) `v0.4.3a`
+* **最終改訂日**: 2026-11-08 JST
 * **ライセンス**: 個人・非営利限定ライセンス（[LICENSE.md](LICENSE.md)。`gnDocRd.js`・`gnDocRdLibGen.html` は MIT） / Copyright (c) 2026 take4
 
 ### ⚠️ はじめにお読みください
@@ -41,6 +41,17 @@
 | `$…$` / `$$…$$` | 数式・化学反応式（KaTeX + mhchem） | オフライン |
 | `.pdf`・`.drawio.svg` | PDF の表示・読み上げ／draw.io の図 | オフライン |
 | `plantuml` / `dbml` / `d2` / `graphviz` | UML・DB スキーマ・宣言的ダイアグラム・DOT | 外部サーバー（既定 kroki.io） |
+
+### 画面
+
+| | |
+| :---: | :---: |
+| [![エディタとビュワー](docs/images/gndoc-1-editor-viewer.png)](docs/images/gndoc-1-editor-viewer.png) | [![独自の記法](docs/images/gndoc-2-notation.png)](docs/images/gndoc-2-notation.png) |
+| 左に書いた Markdown が、右にその場で描かれる | 枠つきのフロー図・色付きの表・装飾枠（追加の同梱物なし） |
+| [![グラフと Mermaid](docs/images/gndoc-3-mermaid-chart.png)](docs/images/gndoc-3-mermaid-chart.png) | [![数式・波形・工程表](docs/images/gndoc-4-parts-math.png)](docs/images/gndoc-4-parts-math.png) |
+| Chart.js のグラフ（CSV を貼るだけ）と Mermaid | 数式・化学式・WaveDrom の波形・簡易工程表 |
+| [![ダークテーマ](docs/images/gndoc-5-dark.png)](docs/images/gndoc-5-dark.png) | [![スライドショー（用紙2枚）](docs/images/gndoc-6-slideshow-paper2.png)](docs/images/gndoc-6-slideshow-paper2.png) |
+| ダークテーマ（ライト・セピアも） | スライドショー（印刷の紙を2ページずつ並べて見せる） |
 
 **主な機能**
 
@@ -108,8 +119,6 @@
 
 > 本節には**最新の版の変更だけ**を載せます。各版の変更は、公式リポジトリの Release の説明にあります。
 
-### v0.4.3 (2026-11-07)
+### v0.4.3a (2026-11-08)
 
-* **新しい版の確かめ**: 起動の後に1日1回だけ、公式リポジトリの版の情報を読み、新しい版があれば下端のバーで知らせます（受け取るだけで、何も送りません）。［更新］で、落として SHA-256 を確かめてから入れ替え、開いていた文書を引き継いで起ち直します。⚙️ →「全般」の 🆕 を外すと、一度も通信しません
-* gnDocRd に `gnDocRd.version` と `gnDocRd.checkUpdate()`（呼んだときだけ確かめる）を足し、見本に「🆕 新しい版を確かめる」を置きました
-* README を公開の入口だけに短くし、操作と記法は **取扱説明書**（`docs/gnDocManual.md`。exe の ❓ →「📖 取扱説明書」）へ移しました。README に開発の動機を書きました（v0.4.2m・n）
+* README に「画面」の節を足しました（エディタとビュワー・独自の記法・グラフと Mermaid・数式と波形と工程表・ダークテーマ・スライドショーの6枚）。exe は v0.4.3 のままです
