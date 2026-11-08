@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.3k",
+    "version": "v0.4.3l",
     "date": "2026-11-08",
-    "notes": "生成AIが書きがちな間違い（flow の 1[名前]・decoBd の [title]）を図の下で知らせ、要約仕様に「よくある間違い」の表を足しました。v0.4.3j の枠つきのフロー図の線の通り道・覚え書き %%・要約仕様の図の決まりも入っています",
+    "notes": "設定の 🎨 淡い色の濃さを 2%〜100% で調整できるようにし、印刷と 🔖 PDF にも同じ濃さで出るようにしました。v0.4.3j〜k の枠つきのフロー図の線の通り道・図の覚え書き %%・生成AIのよくある間違いの知らせも入っています",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3k/gnDoc.exe",
-      "size": 4461056,
-      "sha256": "4ef584470e9d0d15f3434b890c117d170cfe355df69ffc117667c41dda6d470f"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3l/gnDoc.exe",
+      "size": 4461568,
+      "sha256": "59427e8e6226f48313f439cae43e094a15a0c67cad4c5fa5cd1abae8ff8c2061"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.3k",
+    "version": "v0.4.3l",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "e5728e2aabcb77b2321ed6980d3192bd5e791eb892b1a80413e6fde7ec253f12"
+    "sha256": "848e1fb649183e2492abe22515f651bc268078360eac2092072e5bca438d3756"
   }
 }
