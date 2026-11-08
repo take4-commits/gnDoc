@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.3c",
+    "version": "v0.4.3d",
     "date": "2026-11-08",
-    "notes": "書き方の検査: `#見出し`（# の後の空白なし）・効かない `**`・表の列のずれ・閉じていないコード・行き先の無いリンク・図や数式の誤り・取り除いた HTML を、下端の「⚠ 件数」の一覧とエディタの行の印で知らせます",
+    "notes": "すばやく開く（`Ctrl+K`・ファイル一覧の 🔎）: 開いている文書・★を付けた文書・最近読んだ文書（日ごと）・留めたフォルダの文書・コマンド（`>` で始める）を、名前で絞り込んで開きます。★・最近・フォルダは exe だけ",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3c/gnDoc.exe",
-      "size": 4411392,
-      "sha256": "b98a014621e3008e4dd923a12792b590291ad813b97cf9d9763ebc6fcdaf1f96"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3d/gnDoc.exe",
+      "size": 4428800,
+      "sha256": "d391e24420e6094f39786f5ee9795c3752ef8877d74a2f7ec712cf58a58d89bb"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.3c",
+    "version": "v0.4.3d",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "e2e8444fb28eca5e1644e33fba2a62ca0fbcfb4363d42944db026c61e400666e"
+    "sha256": "a7555b555b7aa79d81fb4f47a9d0f496bcf91d6b6551bd8b6d7fd5388605832e"
   }
 }
