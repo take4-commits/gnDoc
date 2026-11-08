@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.3d",
+    "version": "v0.4.3f",
     "date": "2026-11-08",
-    "notes": "すばやく開く（`Ctrl+K`・ファイル一覧の 🔎）: 開いている文書・★を付けた文書・最近読んだ文書（日ごと）・留めたフォルダの文書・コマンド（`>` で始める）を、名前で絞り込んで開きます。★・最近・フォルダは exe だけ",
+    "notes": "exe を終了して起動し直したとき、前回の終了時の文書の一覧に戻るようにしました（以前は、全部閉じても新しく開いても、最後に［更新］した時点の一覧に戻っていました）",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3d/gnDoc.exe",
-      "size": 4428800,
-      "sha256": "d391e24420e6094f39786f5ee9795c3752ef8877d74a2f7ec712cf58a58d89bb"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3f/gnDoc.exe",
+      "size": 4440576,
+      "sha256": "106a48ed781d7eeb909cc7298d52e7f343f52cdddc405ed338f58c8cc576d782"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.3d",
+    "version": "v0.4.3f",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "a7555b555b7aa79d81fb4f47a9d0f496bcf91d6b6551bd8b6d7fd5388605832e"
+    "sha256": "0b29a62011d2f9d2ff1873c8465306c0bdf704cdf8d8b220e42e944409a1dcc1"
   }
 }
