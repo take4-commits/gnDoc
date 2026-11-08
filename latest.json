@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.3f",
+    "version": "v0.4.3g",
     "date": "2026-11-08",
-    "notes": "exe を終了して起動し直したとき、前回の終了時の文書の一覧に戻るようにしました（以前は、全部閉じても新しく開いても、最後に［更新］した時点の一覧に戻っていました）",
+    "notes": "❓ の「🤖 要約仕様」に、レビューのコメント票への返し方（返信・解決・新しいコメント）と、AI が書かない方がよい書き方（front matter・定義リスト・`[[ページ名]]`）・書き方の検査が知らせる崩れを足しました。AI が書いた文書の直しを、コメント票で頼めます",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3f/gnDoc.exe",
-      "size": 4440576,
-      "sha256": "106a48ed781d7eeb909cc7298d52e7f343f52cdddc405ed338f58c8cc576d782"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3g/gnDoc.exe",
+      "size": 4441600,
+      "sha256": "31bb13c2e9dbf32ec37de5d8340ac5a306ec067b4039a6eb617874fb475234e1"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.3f",
+    "version": "v0.4.3g",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "0b29a62011d2f9d2ff1873c8465306c0bdf704cdf8d8b220e42e944409a1dcc1"
+    "sha256": "275d69af39be933a1ac16cd004f30bc3ebf44a316ac698205e9562cdc5aae2cb"
   }
 }
