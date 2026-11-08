@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.3j",
+    "version": "v0.4.3k",
     "date": "2026-11-08",
-    "notes": "枠つきのフロー図の線を読みやすくしました（線ごとの通り道・隙間の自動調整・見出しは箱を避ける）。全画面で線がずれていたのを直し、図の覚え書き %% と要約仕様の図の決まりを足しました。［更新］で GitHub が応えないときは試し直します",
+    "notes": "生成AIが書きがちな間違い（flow の 1[名前]・decoBd の [title]）を図の下で知らせ、要約仕様に「よくある間違い」の表を足しました。v0.4.3j の枠つきのフロー図の線の通り道・覚え書き %%・要約仕様の図の決まりも入っています",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3j/gnDoc.exe",
-      "size": 4459008,
-      "sha256": "c59fe92de1d23531f727fb9911e1c435eefbecacb575827914cf3a51945fb34f"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3k/gnDoc.exe",
+      "size": 4461056,
+      "sha256": "4ef584470e9d0d15f3434b890c117d170cfe355df69ffc117667c41dda6d470f"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.3j",
+    "version": "v0.4.3k",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "33f6746b08ab47f99b895123e5a3471dc029679f391d90ff6ff9dad647dcfbef"
+    "sha256": "e5728e2aabcb77b2321ed6980d3192bd5e791eb892b1a80413e6fde7ec253f12"
   }
 }
