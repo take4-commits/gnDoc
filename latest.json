@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.3g",
+    "version": "v0.4.3j",
     "date": "2026-11-08",
-    "notes": "❓ の「🤖 要約仕様」に、レビューのコメント票への返し方（返信・解決・新しいコメント）と、AI が書かない方がよい書き方（front matter・定義リスト・`[[ページ名]]`）・書き方の検査が知らせる崩れを足しました。AI が書いた文書の直しを、コメント票で頼めます",
+    "notes": "枠つきのフロー図の線を読みやすくしました（線ごとの通り道・隙間の自動調整・見出しは箱を避ける）。全画面で線がずれていたのを直し、図の覚え書き %% と要約仕様の図の決まりを足しました。［更新］で GitHub が応えないときは試し直します",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3g/gnDoc.exe",
-      "size": 4441600,
-      "sha256": "31bb13c2e9dbf32ec37de5d8340ac5a306ec067b4039a6eb617874fb475234e1"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3j/gnDoc.exe",
+      "size": 4459008,
+      "sha256": "c59fe92de1d23531f727fb9911e1c435eefbecacb575827914cf3a51945fb34f"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.3g",
+    "version": "v0.4.3j",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "275d69af39be933a1ac16cd004f30bc3ebf44a316ac698205e9562cdc5aae2cb"
+    "sha256": "33f6746b08ab47f99b895123e5a3471dc029679f391d90ff6ff9dad647dcfbef"
   }
 }

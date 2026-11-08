@@ -50,7 +50,7 @@
  *  SOFTWARE.
  */
 // @gnDocRd-core:begin
-// ここは tools/Build-GnDocRd.mjs が app/gnDoc.html（v0.4.3g）の区切りから書き込んだ物。**直接直さない**（gnDoc.html を直して作り直す）
+// ここは tools/Build-GnDocRd.mjs が app/gnDoc.html（v0.4.3j）の区切りから書き込んだ物。**直接直さない**（gnDoc.html を直して作り直す）
 ;(function (root) {
     if (typeof document === 'undefined') return;   // 描くのにブラウザの DOM が要る
     // ---------- 補助の関数（gnDoc.html の @gnDocRd-deps） ----------
@@ -696,6 +696,8 @@
                 const val = (a[2] !== undefined ? a[2] : a[3] !== undefined ? a[3] : a[4]).trim().toLowerCase();
                 // 縦書き（上から下）も選べるようにする。安全の手順書は縦に並べることが多い。
                 if (key === 'dir') out.dir = (val === '縦' || val === 'tb' || val === '下') ? 'TB' : 'LR';
+                // 枠つきの図の隙間（v0.4.3i）。既定は線の本数に合わせて広げる。`gap=fixed`（固定）で以前の幅のまま
+                else if (key === 'gap') out.gap = (val === 'fixed' || val === '固定') ? 'fixed' : '';
             }
             return out;
         }
@@ -772,7 +774,7 @@
             const jumps = [];
             for (const raw of lines) {
                 const line = raw.trim();
-                if (!line || line.startsWith('#')) continue;      // 空行と覚え書きは読み飛ばす
+                if (!line || line.startsWith('#') || line.startsWith('%%')) continue;      // 空行と覚え書き（# と %%。v0.4.3i まで # だけ）は読み飛ばす
                 const jump = FLOW_JUMP_RE.exec(line);
                 if (jump) { jumps.push(jump); continue; }
                 const box = FLOW_BOX_RE.exec(line);
@@ -911,7 +913,7 @@
             let target = null;     // 中身を入れる箱。直前の箱の行に箱が2つ以上あれば、その箱の並び（配列）
             for (const raw of String(src || '').split('\n')) {
                 const line = raw.trim();
-                if (!line || line.startsWith('#')) continue;
+                if (!line || line.startsWith('#') || line.startsWith('%%')) continue;
                 if (FLOW_GRID_SEP_RE.test(line)) { if (rows[rows.length - 1].length) rows.push([]); target = null; continue; }
                 const cont = FLOW_GRID_CONT_RE.test(line);
                 if (line.startsWith('[') || cont) {
@@ -1199,7 +1201,22 @@
             if (am) { arrow = gxConnector(am[1]); t = t.slice(am[0].length).trim(); }
             return { div: true, label: t, arrow };
         }
+        // 仕切りは**横に並ぶ2つの枠の間**に立つ点線（境目）。左か右に枠が無い仕切りは点線を描かず、知らせる（v0.4.3j）。
+        // 生成AIが線の一覧の見出しに使い（段の最後の `- - - 機能間の結合 - - -`）、図の右端に意味の無い点線と文字が残っていた。
+        // 下に書いた線は、今までどおり引く（左右の枠が無い側は、図の全体から名前で探す）
+        function gxMarkOrphanDivs(bands, notes, what) {
+            bands.forEach(b => b.forEach((d, k) => {
+                if (!d.div) return;
+                const left = k > 0 && !b[k - 1].div, right = k < b.length - 1 && !b[k + 1].div;
+                if (left && right) return;
+                d.orphan = true;
+                const side = !left && !right ? '左右' : !right ? '右' : '左';
+                notes.push(`仕切り${d.label ? '「' + d.label + '」' : ''}の${side}に${what}が無いので、点線は描きませんでした（仕切りは横に並ぶ2つの${what}の間に引く境目です。`
+                    + `線の一覧の見出しや覚え書きなら %% ${d.label || '…'} と書けます）`);
+            }));
+        }
         function gxDivHtml(d) {
+            if (d.orphan) return '';
             const arrow = d.arrow ? ` data-gx-arrow="${d.arrow.thick ? 'thick' : 'thin'}${d.arrow.from ? ' from' : ''}${d.arrow.to ? ' to' : ''}"` : '';
             return `<div class="gx-div"${arrow}><span class="gx-div-line"></span>`
                 // 仕切りの文字も修飾が効く（v0.3.18w）
@@ -1253,7 +1270,15 @@
             const ensureFrame = () => frame || newFrame('', { hue: '', tone: '', width: 0, bare: true });
             for (const raw of String(src || '').split('\n')) {
                 const line = raw.trim();
-                if (line.startsWith('#')) continue;
+                // 覚え書き（コメント）の行は描かない（v0.4.3j。利用者「仕切り線の仕様を明確化し、コメント文の仕様も追加」。
+                // 生成AIが線の一覧の見出しに仕切り `- - - 機能間の結合 - - -` を使い、右端に点線が残っていた）。
+                // `%%` を勧める（cols の中は Markdown で `#` が見出しになるため。Mermaid のコメントと同じ形）。`#` も以前どおり読み飛ばすが、
+                // 箱の中身を書いている所の `#` の行は、書いたつもりの中身が消えるので知らせる
+                if (line.startsWith('%%')) continue;
+                if (line.startsWith('#')) {
+                    if (content && row) notes.push(`箱の中身の「#」で始まる行は、覚え書きとして読み飛ばしました（中身なら # を外し、覚え書きなら %% と書けます）: ${line}`);
+                    continue;
+                }
                 if (!line) { content = false; continue; }
                 let m;
                 if ((m = GX_FRAME_RE.exec(line))) { newFrame(m[1].trim(), gxFrameAttrs(m[2])); continue; }
@@ -1329,6 +1354,7 @@
                 if (it.maybe && hits(it.maybe.na) && hits(it.maybe.nb)) { edges.push(it.maybe); it.skip = true; }
                 delete it.maybe;
             }));
+            gxMarkOrphanDivs(bands, notes, '枠');
             return { bands, frames, boxes, edges, notes };
         }
         function renderGxFlow(src) {
@@ -1381,6 +1407,7 @@
                     continue;
                 }
                 if (fm) { fence = fm[1]; ensureCol().lines.push(raw); continue; }
+                if (line.startsWith('%%')) continue;   // 覚え書き（v0.4.3j。cols の中は Markdown なので # は見出しになる）
                 let m;
                 if ((m = GX_FRAME_RE.exec(line))) { newCol(m[1].trim(), gxFrameAttrs(m[2])); continue; }
                 if (FLOW_GRID_SEP_RE.test(line)) { if (band().length) bands.push([]); col = null; divZone = null; continue; }
@@ -1400,6 +1427,7 @@
                 ensureCol().lines.push(raw);
             }
             if (!cols.length) return null;
+            gxMarkOrphanDivs(bands, notes, '列');
             const colHtml = c => {
                 let body;
                 if (colsDepth >= 2) body = `<pre>${escapeHtml(c.lines.join('\n'))}</pre>`;
@@ -1840,7 +1868,8 @@
                 if (flow) {
                     // 枠 `[[…]]`・仕切り `- - -`・行の中の `→` を使っていれば、枠つきのフロー図（cols の中ではいつも）
                     if (colsDepth > 0 || isGxFlow(codeText)) {
-                        const gx = renderGxFlow(codeText);
+                        let gx = renderGxFlow(codeText);
+                        if (gx && flow.gap === 'fixed') gx = gx.replace(/^<div class="gx /, '<div data-gx-gap="fixed" class="gx ');
                         if (gx) return gx;
                     }
                     // `|` か `---` があればグリッド配置（HTML で組む）。無ければこれまでどおり Mermaid。
@@ -2172,11 +2201,15 @@
         // 図や外側に CSS の zoom・拡大縮小が掛かっていると、getBoundingClientRect は縮めた後の大きさを返すが、
         // 線の SVG は図の中（縮める前の座標）に置くので、測った値を縮めた分だけ戻す（v0.4.3b。スライドショーで
         // 背の高い図を zoom で縮めると、線だけが二重に縮んで箱からずれていた。zoom 0.47 で見かけ 317px・元 674px を実測）
-        const raw = el.getBoundingClientRect();
+        let raw, z, base;
+        const measure = () => {
+            raw = el.getBoundingClientRect();
+            const gz = el.offsetWidth > 0 ? raw.width / el.offsetWidth : 1;
+            z = gz > 0.05 && Math.abs(gz - 1) > 0.005 ? gz : 1;
+            base = { left: raw.left, top: raw.top, width: raw.width / z, height: raw.height / z };
+        };
+        measure();
         if (!raw.width || !raw.height) return;
-        const gz = el.offsetWidth > 0 ? raw.width / el.offsetWidth : 1;
-        const z = gz > 0.05 && Math.abs(gz - 1) > 0.005 ? gz : 1;
-        const base = { left: raw.left, top: raw.top, width: raw.width / z, height: raw.height / z };
         svg.setAttribute('width', gxN(base.width)); svg.setAttribute('height', gxN(base.height));
         let edges = [];
         try { edges = JSON.parse(decodeURIComponent(el.dataset.gxEdges || '%5B%5D')); } catch (e) {}
@@ -2222,72 +2255,162 @@
                           d: [[x, y], [x - w, y - s], [x + w, y - s]], u: [[x, y], [x - w, y + s], [x + w, y + s]] }[dir];
             out.push(`<polygon points="${pts.map(p => p.map(gxN).join(',')).join(' ')}"${gxPaint('fill', c)}/>`);
         };
-        // 見出しの下地は、その位置にある枠の地（無ければ本文の地）。ビュワーの背景は透明なことがあり、
-        // それを白と見なしてダーク系で白い下地になっていた（v0.3.18g）
-        const pageBg = gxColor(getComputedStyle(R()).getPropertyValue('--bg-color').trim()) || gxColor(getComputedStyle(R()).backgroundColor) || [255, 255, 255, 1];
-        const frameRects = own('[data-gx-frame]').map(f => ({ r: rectOf(f), bg: gxColor(getComputedStyle(f).backgroundColor) }));
-        const bgAt = (x, y) => { let hit = null; for (const f of frameRects) if (f.bg && f.bg[3] > 0.5 && x >= f.r.x && x <= f.r.r && y >= f.r.y && y <= f.r.b) hit = f.bg; return hit ? hit.slice(0, 3).concat(1) : pageBg; };
-        // 見出しどうしが重なるときは、下へずらす
-        const placed = [];
-        const labelAt = (x, y, text, c) => {
-            if (!text) return;
-            const w = text.length * 12 + 8;
-            for (let t = 0; t < 4 && placed.some(q => Math.abs(q.x - x) < (q.w + w) / 2 && Math.abs(q.y - y) < 18); t++) y += 18;
-            placed.push({ x, y, w });
-            const bg = bgAt(x, y);
-            out.push(`<rect x="${gxN(x - w / 2)}" y="${gxN(y - 9)}" width="${gxN(w)}" height="18" rx="3"${gxPaint('fill', bg)}/>`);
-            out.push(`<text x="${gxN(x)}" y="${gxN(y + 4)}" text-anchor="middle" font-size="12"${gxPaint('fill', c)}>${gxEsc(text)}</text>`);
+
+        // ---- 1. 名前で引く線の相手を決める（位置は使わない） ----
+        const xs = [];
+        for (const e of edges) {
+            if (e.k !== 'x') continue;
+            const sa = e.divLeft ? byFrame(e.divLeft) : e.scope ? byFrame(e.scope) : null;
+            const sb = e.divRight ? byFrame(e.divRight) : e.scope ? byFrame(e.scope) : null;
+            const pa = resolve(e.na, sa), pb = resolve(e.nb, sb);
+            if (!pa.hit || !pb.hit) { msgs.push(`引けなかった線（${(pa.err || pb.err)}）: ${e.raw}`); continue; }
+            if (pa.hit === pb.hit) { msgs.push(`引けなかった線（同じ箱どうし）: ${e.raw}`); continue; }
+            xs.push({ e, A: pa.hit, B: pb.hit });
+        }
+
+        // ---- 2. 線の道筋の種類と、通り道（溝・枠の内側・段の下・段の間）の割り当て ----
+        // v0.4.3i（利用者「接続線が重なりすぎて、目で追跡できない」「隙間の自動調整機能を検討」「全て一度に修正」）。
+        //   straight … 同じ枠で、すぐ上・すぐ下の段の箱 → 段の間を真っすぐ（遠回りしない）
+        //   same     … 同じ枠のそれ以外 → 枠の右の内側の通り道。**通り道は線ごとに分ける**（以前は全部が右端から 7px の1本に重なっていた）
+        //   adj      … 隣の枠 → 間の溝
+        //   under    … 同じ段の離れた枠 → 溝を下りて**段の下の通り道**を回る（以前は間の枠の箱の上を横切っていた）
+        //   band     … 別の段の枠 → 段と段の間を通る
+        // 隙間は、通る線の本数に合わせて**この図だけ広げる**（溝・枠の右の余白・段の間・段の下）。広げるだけで、値は本数だけから決まる
+        // （位置から決めないので、広げた後に引き直しても同じ値になり、描き直しが繰り返さない）。`flow {gap=fixed}` で広げない
+        const AUTO = el.dataset.gxGap !== 'fixed';
+        const STEP = 10;
+        const isRow = n => !!n && (n.classList.contains('gx-row') || n.classList.contains('fg-row'));
+        const rowOf = n => isRow(n && n.parentElement) ? n.parentElement : null;
+        const nextRow = r => {
+            for (let s = r && r.nextElementSibling; s; s = s.nextElementSibling) {
+                if (isRow(s)) return s;
+                if (!s.classList.contains('gx-lane')) return null;   // 間に説明文などがあれば真っすぐ引かない
+            }
+            return null;
         };
-        const hsegs = [];
+        const rowsOf = f => [...f.querySelectorAll('.gx-row, .fg-row')].filter(r => ownFrame(r) === f || (!ownFrame(r) && f === el));
+        const gapOf = (frame, side) => {
+            const s = side > 0 ? frame.nextElementSibling : frame.previousElementSibling;
+            return s && (s.classList.contains('gx-gap') || s.classList.contains('gx-div')) ? s : null;
+        };
+        const eid = new Map();
+        const chanKey = (frame, side) => gapOf(frame, side) || ((eid.has(frame) ? eid.get(frame) : (eid.set(frame, eid.size), eid.size - 1)) + ':' + side);
+        const R0 = n => n.getBoundingClientRect();   // 左右・上下の順を見るだけ（隙間を広げても順は変わらない）
+        // 同じ辺に入る線・出る線は、辺を等分した位置に並べる
+        const blocked = (n, side) => {
+            const row = n.parentElement;
+            if (!isRow(row)) return false;
+            const sibs = [...row.children].filter(x => x.classList.contains('gx-box') || x.classList.contains('fg-box'));
+            const i = sibs.indexOf(n);
+            return side > 0 ? i < sibs.length - 1 : i > 0;
+        };
+        const pid = new Map();
+        const portKey = (n, side) => { if (!pid.has(n)) pid.set(n, pid.size); return { n, side, key: pid.get(n) + '|' + side }; };
+        const plan = xs.map(({ e, A, B }) => {
+            const ra = R0(A), rb = R0(B), FA = ownFrame(A), FB = ownFrame(B);
+            const side = (rb.left + rb.right) >= (ra.left + ra.right) ? 1 : -1;
+            const p = { e, A, B, FA, FB, side };
+            if (FA && FA === FB) {
+                const rA = rowOf(A), rB = rowOf(B), ov = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
+                if (rA && rB && ov >= 24 * z && (nextRow(rA) === rB || nextRow(rB) === rA)) { p.kind = 'straight'; p.lower = nextRow(rA) === rB ? rB : rA; return p; }
+                p.kind = 'same'; p.inSide = 1;
+                const rows = rowsOf(FA), ia = rows.indexOf(rA), ib = rows.indexOf(rB);
+                p.span = [Math.min(ia, ib), Math.max(ia, ib)];
+            } else if (FA && FB && FA.parentElement === FB.parentElement) {
+                const g = gapOf(FA, side);
+                p.inSide = -side;
+                p.kind = g && (side > 0 ? g.nextElementSibling : g.previousElementSibling) === FB ? 'adj' : (AUTO ? 'under' : 'adj');
+                if (p.kind === 'under') { const fa = R0(FA), fb = R0(FB); p.span = [Math.min(fa.left, fb.left), Math.max(fa.right, fb.right)]; }
+            } else {
+                p.kind = FA && FB ? 'band' : 'adj';
+                p.inSide = FA && FB ? ((ra.left + ra.right) >= (rb.left + rb.right) ? 1 : -1) : -side;
+                if (p.kind === 'band') {
+                    const ba = FA.parentElement, bb = FB.parentElement;
+                    p.bandGap = R0(bb).top > R0(ba).top ? bb : ba;   // 下の段（段の間の隙間はその段の上の余白）
+                    const xa = side > 0 ? R0(FA).right : R0(FA).left, xb = p.inSide > 0 ? R0(FB).right : R0(FB).left;
+                    p.span = [Math.min(xa, xb), Math.max(xa, xb)];
+                }
+            }
+            const oSide = p.kind === 'same' ? 1 : side, iSide = p.kind === 'same' ? 1 : p.inSide;
+            p.outKey = blocked(A, oSide) ? null : portKey(A, oSide);
+            p.inKey = blocked(B, iSide) ? null : portKey(B, iSide);
+            return p;
+        });
+        // 区間が重ならない線どうしは同じ通り道を使う（短い線ほど内側。外側の線と交わらない）
+        const lanes = (list, keyOf) => {
+            const groups = new Map();
+            list.forEach(p => { const k = keyOf(p); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); });
+            const n = new Map();
+            groups.forEach((g, k) => {
+                const used = [];
+                g.sort((a, b) => (a.span[1] - a.span[0]) - (b.span[1] - b.span[0]));
+                g.forEach(p => {
+                    let i = 0;
+                    while ((used[i] || []).some(s => !(p.span[1] < s[0] || p.span[0] > s[1]))) i++;
+                    (used[i] = used[i] || []).push(p.span); p.lane = i;
+                });
+                n.set(k, used.length);
+            });
+            return n;
+        };
+        const sameN = lanes(plan.filter(p => p.kind === 'same'), p => p.FA);
+        const underN = lanes(plan.filter(p => p.kind === 'under'), p => p.FA.parentElement);
+        const bandN = lanes(plan.filter(p => p.kind === 'band'), p => p.bandGap);
+        // 溝（縦の通り道）: 通る線を数え、先に数えた順に並べる
+        const chanN = new Map(), chanUsed = new Map(), chanLabel = new Map();
+        const countChan = k => chanN.set(k, (chanN.get(k) || 0) + 1);
+        plan.forEach(p => {
+            if (p.kind === 'adj') {
+                const k = chanKey(p.FA || p.A, p.side);
+                countChan(k);
+                // 隣の枠への線の見出しは、溝の中（箱と箱の間）に置くことが多い。見出しの幅も溝に入るようにする
+                if (p.e.label) chanLabel.set(k, Math.max(chanLabel.get(k) || 0, p.e.label.length * 12 + 8));
+            }
+            else if (p.kind === 'under') { countChan(chanKey(p.FA, p.side)); countChan(chanKey(p.FB, p.inSide)); }
+            else if (p.kind === 'band') { countChan(chanKey(p.FA, p.side)); countChan(chanKey(p.FB, p.inSide)); }
+        });
+        // 箱の上下の線（↓）や行の中の矢印の見出しが入るよう、真っすぐの線の下の段は間を空ける
+        const rowGap = new Map();
+        plan.filter(p => p.kind === 'straight').forEach(p => rowGap.set(p.lower, Math.max(rowGap.get(p.lower) || 0, p.e.label ? 30 : 20)));
+
+        // ---- 3. 隙間を広げる（この図だけ。inline の style。値は本数だけで決まる） ----
+        const setPx = (n, prop, v) => { const s = v ? Math.round(v) + 'px' : ''; if (n.style[prop] !== s) n.style[prop] = s; };
+        const defPad = f => { if (f.dataset.gxPadR === undefined) { const v = f.style.paddingRight; f.style.paddingRight = ''; f.dataset.gxPadR = parseFloat(getComputedStyle(f).paddingRight) || 0; f.style.paddingRight = v; } return +f.dataset.gxPadR; };
+        if (AUTO) {
+            own('.gx-gap').forEach(g => {
+                const n = chanN.get(g) || 0, d = el.classList.contains('gx-cols') ? 18 : 28;
+                // 見出しは枠の余白（両側で約 30px）にもかかるので、溝そのものは見出しの幅より 22px 狭くてよい
+                const want = Math.max(n > 1 ? STEP * (n + 1) : 0, (chanLabel.get(g) || 0) - 22);
+                setPx(g, 'flexBasis', want > d ? want : 0);
+            });
+            own('[data-gx-frame]').forEach(f => { const n = sameN.get(f) || 0, d = defPad(f); setPx(f, 'paddingRight', n && 10 + (n - 1) * STEP > d ? 10 + (n - 1) * STEP : 0); });
+            own('.gx-row').forEach(r => setPx(r, 'marginTop', rowGap.get(r) || 0));
+            own('.gx-band').forEach(b => {
+                setPx(b, 'paddingBottom', underN.get(b) ? 14 + (underN.get(b) - 1) * STEP : 0);
+                const n = bandN.get(b) || 0;
+                setPx(b, 'marginTop', n > 1 && 14 + (n - 1) * STEP > 26 ? 14 + (n - 1) * STEP : 0);
+            });
+            measure();
+            svg.setAttribute('width', gxN(base.width)); svg.setAttribute('height', gxN(base.height));
+        }
+
+        // ---- 4. 線を引く（見出しは最後にまとめて置く） ----
+        const segs = [], labels = [], hsegs = [];
+        let pathNo = 0;
         const draw = (pts, e, c) => {
-            const thick = !!(e.c && e.c.thick);
-            for (let i = 0; i < pts.length - 1; i++) if (Math.abs(pts[i][1] - pts[i + 1][1]) < 1) hsegs.push([Math.min(pts[i][0], pts[i + 1][0]), Math.max(pts[i][0], pts[i + 1][0]), pts[i][1]]);
+            const thick = !!(e.c && e.c.thick), id = ++pathNo;
+            for (let i = 0; i < pts.length - 1; i++) {
+                segs.push({ id, x1: pts[i][0], y1: pts[i][1], x2: pts[i + 1][0], y2: pts[i + 1][1] });
+                if (Math.abs(pts[i][1] - pts[i + 1][1]) < 1) hsegs.push([Math.min(pts[i][0], pts[i + 1][0]), Math.max(pts[i][0], pts[i + 1][0]), pts[i][1]]);
+            }
             out.push(`<path d="M${pts.map(p => gxN(p[0]) + ' ' + gxN(p[1])).join(' L')}" fill="none"${gxPaint('stroke', c)} stroke-width="${thick ? 2.8 : 1.6}"`
                 + `${e.dashed ? ' stroke-dasharray="6 4"' : ''} stroke-linejoin="round"/>`);
             const n = pts.length;
             if (e.c && e.c.to) head(pts[n - 1], dirOf(pts[n - 2], pts[n - 1]), c, thick);
             if (e.c && e.c.from) head(pts[0], dirOf(pts[1], pts[0]), c, thick);
-            if (e.label) {
-                let best = 0, k = 0;
-                for (let i = 0; i < n - 1; i++) { const l = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); if (l > best) { best = l; k = i; } }
-                // 縦の区間なら見出しは線の右へ（線の上に重ねると、線と矢じりが隠れる）
-                const mx = (pts[k][0] + pts[k + 1][0]) / 2, my = (pts[k][1] + pts[k + 1][1]) / 2;
-                const vert = Math.abs(pts[k + 1][0] - pts[k][0]) < 1;
-                labelAt(vert ? mx + 6 + (e.label.length * 12 + 8) / 2 : mx, my, e.label, c);
-            }
+            if (e.label) labels.push({ pts, text: e.label, c, id });
+            return id;
         };
-        // 溝（枠の外の隙間）を縦に通る線の x。**同じ溝を通る線は、先に本数を数えて溝の幅に等分して並べる**
-        // （v0.3.18g・利用者「線 受付窓口 ⇒ 確認 と A班:受付端末 → B班:記録 の間に、隙間を空ける為の仕様を検討」）。
-        // 間隔は 6〜14px。仕切りの溝では、真ん中（仕切りの点線）の上に線を置かない
-        const slots = new Map(), slotN = new Map(), eid = new Map();
-        const chanKey = (frame, side) => { if (!eid.has(frame)) eid.set(frame, eid.size); return eid.get(frame) + ':' + side; };
-        const countChan = (frame, side) => { const k = chanKey(frame, side); slotN.set(k, (slotN.get(k) || 0) + 1); };
-        const chan = (frame, side) => {
-            const f = rectOf(frame);
-            let sib = side > 0 ? frame.nextElementSibling : frame.previousElementSibling;
-            let x, cw, div = false;
-            if (sib && (sib.classList.contains('gx-gap') || sib.classList.contains('gx-div'))) { const s = rectOf(sib); x = s.cx; cw = s.w; div = sib.classList.contains('gx-div'); }
-            else if (sib && sib.hasAttribute('data-gx-frame')) { const s = rectOf(sib); x = side > 0 ? (f.r + s.x) / 2 : (s.r + f.x) / 2; cw = side > 0 ? s.x - f.r : f.x - s.r; }
-            else { x = side > 0 ? f.r + Math.max(4, (base.width - f.r) / 2) : Math.max(2, f.x / 2); cw = 2 * Math.min(x - (side > 0 ? f.r : 0), (side > 0 ? base.width : f.x) - x); }
-            const key = chanKey(frame, side), k = slots.get(key) || 0, n = Math.max(slotN.get(key) || 1, k + 1);
-            slots.set(key, k + 1);
-            if (n === 1 && !div) return x;
-            const step = Math.max(6, Math.min(14, cw / (n + 2)));
-            return x + (k - (n - 1) / 2) * step + (div && n % 2 ? step / 2 : 0);
-        };
-        // 同じ段の、指す側に別の箱があるか（あれば横から出入りせず、上下から回る）
-        const blocked = (n, side) => {
-            const row = n.parentElement;
-            if (!row || !(row.classList.contains('gx-row') || row.classList.contains('fg-row'))) return false;
-            const sibs = [...row.children].filter(x => x.classList.contains('gx-box') || x.classList.contains('fg-box'));
-            const i = sibs.indexOf(n);
-            return side > 0 ? i < sibs.length - 1 : i > 0;
-        };
-        // 箱の同じ辺に入る線・出る線は、辺を等分した位置に並べる
-        const ports = new Map();
-        const pid = new Map();
-        const portKey = (n, side) => { if (!pid.has(n)) pid.set(n, pid.size); return { n, side, key: pid.get(n) + '|' + side }; };
-        const xs = [];
         for (const e of edges) {
             if (e.k === 'h') {
                 const A = byId(e.a), B = byId(e.b);
@@ -2302,76 +2425,91 @@
                 const ar = As.map(rectOf), br = Bs.map(rectOf), c = edgeColor(e, As[0]);
                 const y1 = Math.max(...ar.map(r => r.b)), y2 = Math.min(...br.map(r => r.y)), ym = (y1 + y2) / 2;
                 const sub = (from, to) => ({ c: { from, to, thick: e.c.thick }, dashed: e.dashed });   // 見出しは下でまとめて1つ
+                let first = null;
                 if (ar.length === br.length) ar.forEach((a, i) => {
                     const b = br[i];
-                    draw(Math.abs(a.cx - b.cx) < 1 ? [[a.cx, a.b], [b.cx, b.y]] : [[a.cx, a.b], [a.cx, ym], [b.cx, ym], [b.cx, b.y]], sub(e.c.from, e.c.to), c);
+                    const pts = Math.abs(a.cx - b.cx) < 1 ? [[a.cx, a.b], [b.cx, b.y]] : [[a.cx, a.b], [a.cx, ym], [b.cx, ym], [b.cx, b.y]];
+                    const id = draw(pts, sub(e.c.from, e.c.to), c);
+                    if (!first) first = { pts, id };
                 });
                 else {
                     ar.forEach(a => draw([[a.cx, ym], [a.cx, a.b]], sub(false, e.c.from), c));
                     const all = [...ar, ...br].map(r => r.cx);
-                    if (Math.max(...all) - Math.min(...all) > 1) draw([[Math.min(...all), ym], [Math.max(...all), ym]], sub(false, false), c);
-                    br.forEach(b => draw([[b.cx, ym], [b.cx, b.y]], sub(false, e.c.to), c));
+                    if (Math.max(...all) - Math.min(...all) > 1) { const pts = [[Math.min(...all), ym], [Math.max(...all), ym]]; first = { pts, id: draw(pts, sub(false, false), c) }; }
+                    br.forEach(b => { const pts = [[b.cx, ym], [b.cx, b.y]]; const id = draw(pts, sub(false, e.c.to), c); if (!first) first = { pts, id }; });
                 }
-                if (e.label) labelAt(Math.max(...ar.map(r => r.cx)) + 6 + e.label.length * 6, ym, e.label, c);
-            } else if (e.k === 'x') {
-                const sa = e.divLeft ? byFrame(e.divLeft) : e.scope ? byFrame(e.scope) : null;
-                const sb = e.divRight ? byFrame(e.divRight) : e.scope ? byFrame(e.scope) : null;
-                const pa = resolve(e.na, sa), pb = resolve(e.nb, sb);
-                if (!pa.hit || !pb.hit) { msgs.push(`引けなかった線（${(pa.err || pb.err)}）: ${e.raw}`); continue; }
-                if (pa.hit === pb.hit) { msgs.push(`引けなかった線（同じ箱どうし）: ${e.raw}`); continue; }
-                xs.push({ e, A: pa.hit, B: pb.hit });
+                if (e.label && first) labels.push({ pts: first.pts, text: e.label, c, id: first.id });
             }
         }
-        // 乗り越える線: 出る辺・入る辺を決めてから、辺ごとに等分して並べる
-        const plan = xs.map(({ e, A, B }) => {
-            const a = rectOf(A), b = rectOf(B), FA = ownFrame(A), FB = ownFrame(B);
-            const side = b.cx >= a.cx ? 1 : -1;
-            const same = FA && FA === FB;
-            const sameBand = FA && FB && FA.parentElement === FB.parentElement;
-            const inSide = same ? side : (sameBand ? -side : (a.cx >= b.cx ? 1 : -1));
-            const outKey = blocked(A, same ? 1 : side) ? null : portKey(A, same ? 1 : side);
-            const inKey = blocked(B, same ? 1 : inSide) ? null : portKey(B, same ? 1 : inSide);
-            return { e, A, B, a, b, FA, FB, side, same, sameBand, inSide, outKey, inKey };
-        });
-        const count = new Map();
-        plan.forEach(p => [p.outKey, p.inKey].forEach(k => { if (k) count.set(k.key, (count.get(k.key) || 0) + 1); }));
-        plan.forEach(p => { if (p.same) return; countChan(p.FA || p.A, p.side); if (!p.sameBand && p.FA && p.FB) countChan(p.FB, p.inSide); });
-        const used = new Map();
+        const used = new Map(), count = new Map();
+        plan.forEach(p => { if (p.kind !== 'straight') [p.outKey, p.inKey].forEach(k => { if (k) count.set(k.key, (count.get(k.key) || 0) + 1); }); });
         const portY = (k, r) => { const n = count.get(k.key) || 1, i = used.get(k.key) || 0; used.set(k.key, i + 1); return r.y + r.h * (i + 1) / (n + 1); };
+        // 溝の中の x。同じ溝を通る線は、溝の幅に等分して並べる（仕切りの溝では、真ん中の点線の上に置かない）
+        const chanX = (frame, side) => {
+            const f = rectOf(frame), g = gapOf(frame, side), key = chanKey(frame, side);
+            let x, cw, div = false;
+            if (g) { const s = rectOf(g); x = s.cx; cw = s.w; div = g.classList.contains('gx-div'); }
+            else { x = side > 0 ? f.r + Math.max(4, (base.width - f.r) / 2) : Math.max(2, f.x / 2); cw = 2 * Math.min(x - (side > 0 ? f.r : 0), (side > 0 ? base.width : f.x) - x); }
+            const k = chanUsed.get(key) || 0, n = Math.max(chanN.get(key) || 1, k + 1);
+            chanUsed.set(key, k + 1);
+            if (n === 1 && !div) return x;
+            const step = Math.max(4, Math.min(STEP + 2, cw / (n + 1)));
+            return x + (k - (n - 1) / 2) * step + (div && n % 2 ? step / 2 : 0);
+        };
+        // 横の通り道（段の下・段の間）の y
+        const laneY = (top, room, n, k) => { const step = Math.max(4, Math.min(STEP, (room - 8) / Math.max(1, n - 1))); return n === 1 ? top + room / 2 : top + (room - (n - 1) * step) / 2 + k * step; };
+        const frameRowBottom = band => Math.max(...[...band.children].filter(n => n.hasAttribute('data-gx-frame')).map(n => rectOf(n).b));
+        const outPt = (p, a) => {
+            if (p.outKey) { const y = portY(p.outKey, a); return { y, pts: [[p.side > 0 || p.kind === 'same' ? a.r : a.x, y]] }; }
+            return { y: a.b + 6, pts: [[a.cx, a.b], [a.cx, a.b + 6]] };
+        };
+        const inPts = (p, b, x) => {
+            const right = p.kind === 'same' || p.inSide > 0;
+            if (p.inKey) { const y = portY(p.inKey, b); return [[x, y], [right ? b.r : b.x, y]]; }
+            return [[x, b.y - 6], [b.cx, b.y - 6], [b.cx, b.y]];
+        };
         for (const p of plan) {
-            const { e, A, a, b, FA, FB, side, same, sameBand, inSide } = p;
-            const c = edgeColor(e, A), pts = [];
-            if (same) {
-                // 同じ枠の中で隣でない箱どうし: 枠の内側の右の余白を縦に通る
-                const fr = rectOf(FA), x = fr.r - 7;
-                const ya = p.outKey ? portY(p.outKey, a) : a.b + 6, yb = p.inKey ? portY(p.inKey, b) : b.y - 6;
-                if (p.outKey) pts.push([a.r, ya]); else pts.push([a.cx, a.b], [a.cx, ya]);
-                pts.push([x, ya], [x, yb]);
-                if (p.inKey) pts.push([b.r, yb]); else pts.push([b.cx, yb], [b.cx, b.y]);
+            const { e, A, B, FA, FB } = p;
+            const a = rectOf(A), b = rectOf(B), c = edgeColor(e, A);
+            if (p.kind === 'straight') {
+                const lo = Math.max(a.x, b.x), hi = Math.min(a.r, b.r), x = (lo + hi) / 2;
+                draw(a.cy < b.cy ? [[x, a.b], [x, b.y]] : [[x, a.y], [x, b.b]], e, c);
+                continue;
+            }
+            const o = outPt(p, a), pts = o.pts.slice();
+            if (p.kind === 'same') {
+                const fr = rectOf(FA), n = sameN.get(FA) || 1;
+                const bw = (parseFloat(getComputedStyle(FA).borderRightWidth) || 0), pad = parseFloat(getComputedStyle(FA).paddingRight) || 0;
+                const inner = fr.r - bw - pad;   // 箱の右端（枠の中身の右端）
+                const step = Math.max(3, Math.min(STEP, (pad - 6) / Math.max(1, n - 1)));
+                const x = n === 1 && !AUTO ? fr.r - 7 : inner + (AUTO ? 5 : Math.max(3, (pad - (n - 1) * step) / 2)) + p.lane * step;
+                pts.push([x, o.y], ...inPts(p, b, x));
                 draw(pts, e, c);
                 continue;
             }
-            const cxA = chan(FA || A, side);
-            let ya;
-            if (p.outKey) { ya = portY(p.outKey, a); pts.push([side > 0 ? a.r : a.x, ya]); }
-            else { ya = a.b + 6; pts.push([a.cx, a.b], [a.cx, ya]); }
-            pts.push([cxA, ya]);
+            const cxA = chanX(FA || A, p.side);
+            pts.push([cxA, o.y]);
             let cxB = cxA;
-            if (!sameBand && FA && FB) {
-                const ba = rectOf(FA.parentElement), bb = rectOf(FB.parentElement);
-                const gy = bb.y > ba.y ? (ba.b + bb.y) / 2 : (bb.b + ba.y) / 2;
-                cxB = chan(FB, inSide);
-                pts.push([cxA, gy], [cxB, gy]);
+            if (p.kind === 'under') {
+                const band = FA.parentElement, top = frameRowBottom(band), room = rectOf(band).b - top;
+                const y = laneY(top, room, underN.get(band) || 1, p.lane);
+                cxB = chanX(FB, p.inSide);
+                pts.push([cxA, y], [cxB, y]);
+            } else if (p.kind === 'band') {
+                const lower = p.bandGap, upper = lower.previousElementSibling;
+                const top = upper ? rectOf(upper).b : rectOf(lower).y - 26, room = rectOf(lower).y - top;
+                const y = laneY(top, room, bandN.get(lower) || 1, p.lane);
+                cxB = chanX(FB, p.inSide);
+                pts.push([cxA, y], [cxB, y]);
             }
-            if (p.inKey) { const yb = portY(p.inKey, b); pts.push([cxB, yb], [inSide > 0 ? b.r : b.x, yb]); }
-            else { const yb = b.y - 6; pts.push([cxB, yb], [b.cx, yb], [b.cx, b.y]); }
+            pts.push(...inPts(p, b, cxB));
             draw(pts, e, c);
         }
         // 仕切りの矢印（`- - - ⇒ 文字 - - -`）: 左の枠から右の枠へ、仕切りの真ん中の高さで
         own('.gx-div[data-gx-arrow]').forEach(d => {
             const L = d.previousElementSibling, R = d.nextElementSibling;
             if (!L || !R) return;
-            const l = rectOf(L), r = rectOf(R), m = rectOf(d), mid = (Math.max(l.y, r.y) + Math.min(l.b, r.b)) / 2;
+            const l = rectOf(L), r = rectOf(R), mid = (Math.max(l.y, r.y) + Math.min(l.b, r.b)) / 2;
             // **線の横の区間と重ならない高さ**を選ぶ（v0.3.18g。重なると太矢印が線を覆っていた）。真ん中に近い方を優先
             // 線から 12px 離れていれば足りる（それ以上は真ん中に近い方）。仕切りの文字（下端）には掛けない
             const dl = d.querySelector('.gx-div-label');
@@ -2387,6 +2525,53 @@
             }
             const kind = d.dataset.gxArrow || '';
             draw([[l.r + 4, y], [r.x - 4, y]], { c: { thick: /thick/.test(kind), from: /from/.test(kind), to: /to/.test(kind) } }, gxLineColor(L));
+        });
+
+        // ---- 5. 見出し: 箱・枠の題・説明文・ほかの見出し・ほかの線に重ならない所を選ぶ ----
+        // （v0.4.3i。以前は一番長い区間の真ん中に置き、見出しどうしが重なるときだけ下へずらしていた。箱の文字の上に載ることがあった）
+        // 見出しの下地は、その位置にある枠の地（無ければ本文の地）。ビュワーの背景は透明なことがあり、
+        // それを白と見なしてダーク系で白い下地になっていた（v0.3.18g）
+        const pageBg = gxColor(getComputedStyle(R()).getPropertyValue('--bg-color').trim()) || gxColor(getComputedStyle(R()).backgroundColor) || [255, 255, 255, 1];
+        const frameRects = own('[data-gx-frame]').map(f => ({ r: rectOf(f), bg: gxColor(getComputedStyle(f).backgroundColor) }));
+        const bgAt = (x, y) => { let hit = null; for (const f of frameRects) if (f.bg && f.bg[3] > 0.5 && x >= f.r.x && x <= f.r.r && y >= f.r.y && y <= f.r.b) hit = f.bg; return hit ? hit.slice(0, 3).concat(1) : pageBg; };
+        const solid = own(`${GX_BOX_SEL}, .gx-title, .gx-note, .gx-div-label`).map(rectOf);
+        const placed = [];
+        const area = (r, q) => Math.max(0, Math.min(r.r, q.r) - Math.max(r.x, q.x)) * Math.max(0, Math.min(r.b, q.b) - Math.max(r.y, q.y));
+        const crosses = (r, s) => {
+            const sx1 = Math.min(s.x1, s.x2), sx2 = Math.max(s.x1, s.x2), sy1 = Math.min(s.y1, s.y2), sy2 = Math.max(s.y1, s.y2);
+            return sx2 > r.x && sx1 < r.r && sy2 > r.y && sy1 < r.b;
+        };
+        labels.forEach(L => {
+            const w = L.text.length * 12 + 8, h = 18;
+            let best = null, longest = 0;
+            for (let i = 0; i < L.pts.length - 1; i++) longest = Math.max(longest, Math.hypot(L.pts[i + 1][0] - L.pts[i][0], L.pts[i + 1][1] - L.pts[i][1]));
+            for (let i = 0; i < L.pts.length - 1; i++) {
+                const [x1, y1] = L.pts[i], [x2, y2] = L.pts[i + 1], len = Math.hypot(x2 - x1, y2 - y1);
+                if (len < 4) continue;
+                const vert = Math.abs(x2 - x1) < 1;
+                for (const t of [0.5, 0.35, 0.65, 0.2, 0.8]) {
+                    const px = x1 + (x2 - x1) * t, py = y1 + (y2 - y1) * t;
+                    // 縦の区間は右・左・線の上（狭い溝では、線に重ねて置くのが箱に載らない唯一の所）。横の区間は線の上・上側・下側
+                    const cands = vert ? [[px + 6 + w / 2, py], [px - 6 - w / 2, py], [px, py]] : [[px, py], [px, py - h / 2 - 3], [px, py + h / 2 + 3]];
+                    // 候補を少しずらした所も見る（狭い溝で、線の位置からずらせば箱の間に収まることがある）。ずらした量は少し減点
+                    const shifted = [];
+                    cands.forEach(([x, y]) => { for (const dx of [0, -8, 8, -16, 16, -24, 24]) for (const dy of [0, -10, 10]) shifted.push([x + dx, y + dy, Math.abs(dx) + Math.abs(dy), x, y]); });
+                    for (const [cx, cy, moved, ox, oy] of shifted) {
+                        const r = { x: cx - w / 2, y: cy - h / 2, r: cx + w / 2, b: cy + h / 2 };
+                        let sc = 0;
+                        solid.forEach(q => { sc += area(r, q) * 10; });   // 箱の文字を隠すのは、線を隠すより悪い
+                        placed.forEach(q => { sc += area(r, q) * 6; });
+                        segs.forEach(s => { if (s.id !== L.id && crosses(r, s)) sc += 150; });
+                        if (r.x < 0 || r.r > base.width || r.y < 0 || r.b > base.height) sc += 50000;
+                        sc += (longest - len) * 0.5 + Math.abs(t - 0.5) * 40 + (vert && ox < px ? 20 : 0) + (vert && ox === px ? 30 : 0) + (!vert && oy !== py ? 15 : 0) + moved * 0.8;
+                        if (!best || sc < best.sc) best = { sc, cx, cy, r };
+                    }
+                }
+            }
+            if (!best) return;
+            placed.push(best.r);
+            out.push(`<rect x="${gxN(best.r.x)}" y="${gxN(best.r.y)}" width="${gxN(w)}" height="${h}" rx="3"${gxPaint('fill', bgAt(best.cx, best.cy))}/>`);
+            out.push(`<text x="${gxN(best.cx)}" y="${gxN(best.cy + 4)}" text-anchor="middle" font-size="12"${gxPaint('fill', L.c)}>${gxEsc(L.text)}</text>`);
         });
         svg.innerHTML = out.join('');
         const msg = el.querySelector(':scope > .gx-msg');
@@ -2415,6 +2600,11 @@
     function gxToSvg(el, opts = {}) {
         const base = el.getBoundingClientRect();
         const W = Math.ceil(base.width), H = Math.ceil(base.height);
+        // ビュワーの文字の大きさ（CSS の zoom）が 100% でないとき、測った位置は縮めた後・書体の大きさや線の太さは縮める前の値。
+        // 縮めた分を掛けてそろえる（v0.4.3i。利用者「チャートの拡大表示で、接続線・矢印の位置がずれてしまう」。線の SVG は viewBox が無く、
+        // 縮める前の座標のまま幅だけ縮めた大きさで写していた。zoom 0.8 で幅 1222・中の座標 1528 を実測）
+        const gz = el.offsetWidth > 0 ? base.width / el.offsetWidth : 1;
+        const Z = gz > 0.05 && Math.abs(gz - 1) > 0.005 ? gz : 1;
         const out = [];
         const rel = r => ({ x: r.left - base.left, y: r.top - base.top, w: r.width, h: r.height });
         const bgc = gxColor(getComputedStyle(R()).backgroundColor) || [255, 255, 255, 1];
@@ -2425,10 +2615,10 @@
             const r = rel(node.getBoundingClientRect());
             if (r.w < 0.5 && r.h < 0.5) return;
             const fill = gxColor(cs.backgroundColor);
-            const bw = SIDES.map(s => parseFloat(cs['border' + s + 'Width']) || 0);
+            const bw = SIDES.map(s => (parseFloat(cs['border' + s + 'Width']) || 0) * Z);
             const bs = SIDES.map(s => cs['border' + s + 'Style']);
             const bc = SIDES.map(s => cs['border' + s + 'Color']);
-            const rad = Math.max(0, Math.min(parseFloat(cs.borderTopLeftRadius) || 0, r.w / 2, r.h / 2));
+            const rad = Math.max(0, Math.min((parseFloat(cs.borderTopLeftRadius) || 0) * Z, r.w / 2, r.h / 2));
             if (fill) out.push(`<rect x="${gxN(r.x)}" y="${gxN(r.y)}" width="${gxN(r.w)}" height="${gxN(r.h)}" rx="${gxN(rad)}"${gxPaint('fill', fill)}/>`);
             const on = i => bw[i] > 0 && bs[i] !== 'none' && bs[i] !== 'hidden' && gxColor(bc[i]);
             if (SIDES.every((s, i) => on(i)) && bw.every(v => v === bw[0]) && bs.every(v => v === bs[0]) && bc.every(v => v === bc[0])) {
@@ -2481,7 +2671,7 @@
                 if (run && Math.abs(run.top - r.top) < r.height / 2 && r.left >= run.right - 1.5) { run.text += ch; run.right = Math.max(run.right, r.right); }
                 else { run = { text: ch, left: r.left, right: r.right, top: r.top, h: r.height }; runs.push(run); }
             }
-            const color = gxColor(cs.color), fs = parseFloat(cs.fontSize) || 14, bl = baseline(cs);
+            const color = gxColor(cs.color), fs = (parseFloat(cs.fontSize) || 14) * Z, bl = baseline(cs);
             const font = ` font-family="${gxEsc(cs.fontFamily)}" font-size="${gxN(fs)}" font-weight="${cs.fontWeight}"${cs.fontStyle === 'italic' ? ' font-style="italic"' : ''}`;
             runs.forEach(run => {
                 const txt = run.text.replace(/\s+/g, ' ');
@@ -2525,6 +2715,8 @@
             });
             c.querySelectorAll('foreignObject, style, script').forEach(n => n.remove());
             c.removeAttribute('style'); c.removeAttribute('class');
+            // 中の座標は縮める前の大きさ。viewBox が無ければ、縮める前の大きさを viewBox にして縮めた大きさへ合わせる
+            if (Z !== 1 && !c.hasAttribute('viewBox')) c.setAttribute('viewBox', `0 0 ${gxN(r.w / Z)} ${gxN(r.h / Z)}`);
             c.setAttribute('x', gxN(r.x)); c.setAttribute('y', gxN(r.y));
             c.setAttribute('width', gxN(r.w)); c.setAttribute('height', gxN(r.h));
             c.setAttribute('overflow', 'visible');
@@ -4562,8 +4754,8 @@
     gnDocRdPrint(gnDocRd);
     // ---------- 記法の見た目（gnDoc.html の @gnDocRd-css。#viewer → .gnDocRd） ----------
     gnDocRd.CSS = "/* ---------- 色相ひとつを4色へ展開する（表と装飾枠が共有する） ----------\n   `{theme=Blue}` `{theme=青}` のように**書くのは色名ひとつ**で、\n   地・罫線・見出しの地・文字の4色はここが決める。仕様は\n   `docs/gnDoc 表示機能拡張仕様案（枠と表とカラー）_改訂版.md` §2・§5。\n\n   **色は本文の色記法（{blue:…}）と同じ語彙・同じ変数を使い、テーマに追従する。**\n   利用者決定・2026-09-18。2026-09-17 の「仕様書の16進値を固定で使う」を差し替えた。\n   固定値のままだと、**同じ「青」が本文と表とで違う色になる**うえ、\n   ダーク系で表だけが地から浮く。どちらも語彙をひとつに畳めば同時に消える。\n   **色の値そのものは --gd-c-* / --gd-bg-* にしか無い。** ここが決めるのは\n   「色相ひとつを、4つの役へどう割り当てるか」だけ。\n\n   見出しの帯（表の見出し行・装飾枠の題）は地より1つ濃い段（色相だけなら淡）。帯の文字は帯の明るさから\n   白黒を自動で決める（2026-10-08 から。以前は標準色の帯に白文字で、帯が濃すぎた）。\n\n   **表と装飾枠で規則を2組持たない。** 持つと同じ「青」が両者でずれる。\n   使う側（table.gd-table / div.gd-deco）は gd-hue を一緒に付けるだけでよい。 */\n.gnDocRd .gd-hue {\n    /* 色相ごとの4色。色名を書かない既定は灰。 */\n    --gdh-tint: var(--gd-bg-gray);    /* 超淡: 地 */\n    --gdh-lt:   var(--gd-c-ltgray);   /* 淡 */\n    --gdh-base: var(--gd-c-gray);     /* 標準: 見出し帯の地 */\n    --gdh-dk:   var(--gd-c-dkgray);   /* 濃 */\n    /* 役割への割り当て（ライト系・セピア系）。\n       **見出しの帯（表の見出し行・装飾枠の題）は、地より1つ濃い段**（2026-10-08 利用者「タイトルの背景色が濃すぎる。\n       淡い色合いの指定に修正」）。色相だけ・極淡の地なら帯は淡と極淡の間（以前は標準色で、濃すぎた）。 */\n    --gdh-bg:   var(--gdh-tint);\n    --gdh-ink:  var(--gdh-dk);\n    --gdh-line: var(--gdh-lt);\n    /* 色相だけ・極淡の帯は「淡」を地（極淡）へ6割寄せた色。ライト系の淡は文字に使える中くらいの濃さなので、\n       そのままでは帯がまだ濃い（2026-10-08 実測。青・ピンクの帯が目立ちすぎた）。 */\n    --gdh-head-bg: color-mix(in srgb, var(--gdh-lt) 40%, var(--gdh-tint));\n    /* 帯の文字は帯の明るさから白黒を自動で決める（相対輝度 0.179 未満なら白。フロー図の箱と同じ規則）。\n       淡い帯には黒、濃い帯には白が来る。テーマと濃淡のどの組でも読める側になる。 */\n    --gdh-head-ink: rgb(from var(--gdh-head-bg) clamp(0, (0.179 - (0.2126 * pow(r / 255, 2.2) + 0.7152 * pow(g / 255, 2.2) + 0.0722 * pow(b / 255, 2.2))) * 100000, 255) clamp(0, (0.179 - (0.2126 * pow(r / 255, 2.2) + 0.7152 * pow(g / 255, 2.2) + 0.0722 * pow(b / 255, 2.2))) * 100000, 255) clamp(0, (0.179 - (0.2126 * pow(r / 255, 2.2) + 0.7152 * pow(g / 255, 2.2) + 0.0722 * pow(b / 255, 2.2))) * 100000, 255));\n    /* 濃淡付きの地の上の本文の文字（同じ規則） */\n    --gdh-auto-ink: rgb(from var(--gdh-bg) clamp(0, (0.179 - (0.2126 * pow(r / 255, 2.2) + 0.7152 * pow(g / 255, 2.2) + 0.0722 * pow(b / 255, 2.2))) * 100000, 255) clamp(0, (0.179 - (0.2126 * pow(r / 255, 2.2) + 0.7152 * pow(g / 255, 2.2) + 0.0722 * pow(b / 255, 2.2))) * 100000, 255) clamp(0, (0.179 - (0.2126 * pow(r / 255, 2.2) + 0.7152 * pow(g / 255, 2.2) + 0.0722 * pow(b / 255, 2.2))) * 100000, 255));\n}\n/* ダーク系は明暗が入れ替わる。文字は淡色、罫線は濃色にする。 */\nbody.theme-dark .gnDocRd .gd-hue {\n    --gdh-ink:  var(--gdh-lt);\n    --gdh-line: var(--gdh-dk);\n}\n/* 色相の割り当て。基底規則と**詳細度が同じ**なので、必ず後ろに置く。 */\n.gnDocRd .gd-hue-red    { --gdh-tint: var(--gd-bg-red);    --gdh-lt: var(--gd-c-ltred);    --gdh-base: var(--gd-c-red);    --gdh-dk: var(--gd-c-dkred); --gdh-ltdk: var(--gd-c-ltdkred); --gdh-dklt: var(--gd-c-dkltred); --gdh-dkdk: var(--gd-c-dkdkred); }\n.gnDocRd .gd-hue-orange { --gdh-tint: var(--gd-bg-orange); --gdh-lt: var(--gd-c-ltorange); --gdh-base: var(--gd-c-orange); --gdh-dk: var(--gd-c-dkorange); --gdh-ltdk: var(--gd-c-ltdkorange); --gdh-dklt: var(--gd-c-dkltorange); --gdh-dkdk: var(--gd-c-dkdkorange); }\n.gnDocRd .gd-hue-yellow { --gdh-tint: var(--gd-bg-yellow); --gdh-lt: var(--gd-c-ltyellow); --gdh-base: var(--gd-c-yellow); --gdh-dk: var(--gd-c-dkyellow); --gdh-ltdk: var(--gd-c-ltdkyellow); --gdh-dklt: var(--gd-c-dkltyellow); --gdh-dkdk: var(--gd-c-dkdkyellow); }\n.gnDocRd .gd-hue-green  { --gdh-tint: var(--gd-bg-green);  --gdh-lt: var(--gd-c-ltgreen);  --gdh-base: var(--gd-c-green);  --gdh-dk: var(--gd-c-dkgreen); --gdh-ltdk: var(--gd-c-ltdkgreen); --gdh-dklt: var(--gd-c-dkltgreen); --gdh-dkdk: var(--gd-c-dkdkgreen); }\n.gnDocRd .gd-hue-teal   { --gdh-tint: var(--gd-bg-teal);   --gdh-lt: var(--gd-c-ltteal);   --gdh-base: var(--gd-c-teal);   --gdh-dk: var(--gd-c-dkteal); --gdh-ltdk: var(--gd-c-ltdkteal); --gdh-dklt: var(--gd-c-dkltteal); --gdh-dkdk: var(--gd-c-dkdkteal); }\n.gnDocRd .gd-hue-blue   { --gdh-tint: var(--gd-bg-blue);   --gdh-lt: var(--gd-c-ltblue);   --gdh-base: var(--gd-c-blue);   --gdh-dk: var(--gd-c-dkblue); --gdh-ltdk: var(--gd-c-ltdkblue); --gdh-dklt: var(--gd-c-dkltblue); --gdh-dkdk: var(--gd-c-dkdkblue); }\n.gnDocRd .gd-hue-purple { --gdh-tint: var(--gd-bg-purple); --gdh-lt: var(--gd-c-ltpurple); --gdh-base: var(--gd-c-purple); --gdh-dk: var(--gd-c-dkpurple); --gdh-ltdk: var(--gd-c-ltdkpurple); --gdh-dklt: var(--gd-c-dkltpurple); --gdh-dkdk: var(--gd-c-dkdkpurple); }\n.gnDocRd .gd-hue-pink   { --gdh-tint: var(--gd-bg-pink);   --gdh-lt: var(--gd-c-ltpink);   --gdh-base: var(--gd-c-pink);   --gdh-dk: var(--gd-c-dkpink); --gdh-ltdk: var(--gd-c-ltdkpink); --gdh-dklt: var(--gd-c-dkltpink); --gdh-dkdk: var(--gd-c-dkdkpink); }\n.gnDocRd .gd-hue-gray   { --gdh-tint: var(--gd-bg-gray);   --gdh-lt: var(--gd-c-ltgray);   --gdh-base: var(--gd-c-gray);   --gdh-dk: var(--gd-c-dkgray); --gdh-ltdk: var(--gd-c-ltdkgray); --gdh-dklt: var(--gd-c-dkltgray); --gdh-dkdk: var(--gd-c-dkdkgray); }\n/* ---------- 表の属性行による配色（表示機能拡張 第1段） ---------- */\n.gnDocRd table.gd-table th { background: var(--gdh-head-bg); color: var(--gdh-head-ink); border-bottom-color: var(--gdh-line); }\n.gnDocRd table.gd-table td { background: var(--gdh-bg); color: var(--gdh-ink); border-bottom-color: var(--gdh-line); }\n/* 濃淡付き（{theme=ltBlue} など。装飾枠と同じ7段）。地が濃くなるので、本文の文字も地から白黒を決める。 */\n.gnDocRd table.gd-table[class*=\"gd-tone-\"] td { color: var(--gdh-auto-ink); }\n.gnDocRd table.gd-table[class*=\"gd-tone-\"] td a { color: inherit; text-decoration: underline; }\n/* ---------- GFM の注記（> [!NOTE] ほか） ----------\n   色相は種類ごとの class が --gd-alert-hue / --gd-alert-tint に入れる（本文の色記法と同じ変数）。\n   GitHub と同じく**左の太線と題の色**で種類を示す。地は極淡で薄く敷く（印刷でも種類が分かるように）。 */\n/* 脚注（v0.4.3e）。本文の [^1] は上付きの番号、定義は小さめの字で「番号 本文 ↩」。続く定義の頭にだけ区切りの線 */\n.gnDocRd sup.gd-fn-ref a { text-decoration: none; padding: 0 1px; }\n.gnDocRd .gd-fn-def { font-size: 0.9em; margin: 0.2em 0; padding-left: 2em; text-indent: -2em; }\n.gnDocRd :not(.gd-fn-def) + .gd-fn-def { margin-top: 1.4em; padding-top: 0.6em; border-top: 1px solid var(--border-color); }\n.gnDocRd .gd-fn-label { display: inline-block; min-width: 1.6em; text-indent: 0; font-weight: bold; color: var(--accent-color); }\n.gnDocRd .gd-fn-back { text-decoration: none; font-size: 0.9em; }\n.gnDocRd .gd-fn-def:target, .gnDocRd sup.gd-fn-ref:has(a:target) { background: color-mix(in srgb, var(--accent-color) 18%, transparent); }\n.gnDocRd blockquote.gd-alert {\n    margin: 16px 0; padding: 8px 14px;\n    border-left: 4px solid var(--gd-alert-hue);\n    background: var(--gd-alert-tint);\n    border-radius: 0 4px 4px 0;\n}\n.gnDocRd blockquote.gd-alert-note      { --gd-alert-hue: var(--gd-c-blue);   --gd-alert-tint: var(--gd-bg-blue); }\n.gnDocRd blockquote.gd-alert-tip       { --gd-alert-hue: var(--gd-c-green);  --gd-alert-tint: var(--gd-bg-green); }\n.gnDocRd blockquote.gd-alert-important { --gd-alert-hue: var(--gd-c-purple); --gd-alert-tint: var(--gd-bg-purple); }\n.gnDocRd blockquote.gd-alert-warning   { --gd-alert-hue: var(--gd-c-orange); --gd-alert-tint: var(--gd-bg-orange); }\n.gnDocRd blockquote.gd-alert-caution   { --gd-alert-hue: var(--gd-c-red);    --gd-alert-tint: var(--gd-bg-red); }\n.gnDocRd blockquote.gd-alert .gd-alert-title {\n    margin: 0 0 4px; font-weight: bold; color: var(--gd-alert-hue);\n}\n.gnDocRd blockquote.gd-alert > :last-child { margin-bottom: 0; }\n/* ---------- 装飾枠・カード（表示機能拡張 第2段） ----------\n   ```decoBd{title=\"…\" theme=青} のフェンスで作る。中身は Markdown として描く。\n   **本文の文字色は変えない。** 色相は「帯・枠線・地」で示す。\n   本文まで色相の濃色にすると、数行を超えた時点で読みにくくなる\n   （仕様案の例は短い箇条書きだけだったが、実文書ではそうとは限らない）。 */\n.gnDocRd .gd-deco {\n    margin: 20px 0;\n    border: 1px solid var(--gdh-line);\n    border-radius: 6px;\n    background: var(--gdh-bg);\n    overflow: hidden;\n}\n.gnDocRd .gd-deco-title {\n    background: var(--gdh-head-bg); color: var(--gdh-head-ink);\n    font-weight: bold; padding: 8px 14px; line-height: 1.5;\n}\n.gnDocRd .gd-deco-body { padding: 12px 14px; }\n/* 濃淡付き（```decoBd{ltdkRed}・{theme=ltBlue} など。7段）。**表と装飾枠で同じ規則**。\n   地がその濃さになり、**帯と枠線は地より1つ濃い段**（淡い順に ltlt < lt < ltdk < 標準 < dklt < dk < dkdk）。\n   極濃の地だけは、それより濃い段が無いので帯を濃（1つ淡い段）にする。\n   **地が濃くなるので、本文と帯の文字は地の明るさから白黒を自動で決める**（--gdh-auto-ink / --gdh-head-ink）。\n   色相だけと極淡（ltlt）は、地は極淡・帯は淡と極淡の間（.gd-hue の既定）。本文の文字色は変えない。 */\n.gnDocRd :is(.gd-deco, table.gd-table).gd-tone-lt   { --gdh-bg: var(--gdh-lt);   --gdh-head-bg: var(--gdh-ltdk); --gdh-line: var(--gdh-ltdk); }\n.gnDocRd :is(.gd-deco, table.gd-table).gd-tone-ltdk { --gdh-bg: var(--gdh-ltdk); --gdh-head-bg: var(--gdh-base); --gdh-line: var(--gdh-base); }\n.gnDocRd :is(.gd-deco, table.gd-table).gd-tone-dklt { --gdh-bg: var(--gdh-dklt); --gdh-head-bg: var(--gdh-dk);   --gdh-line: var(--gdh-dk); }\n.gnDocRd :is(.gd-deco, table.gd-table).gd-tone-dk   { --gdh-bg: var(--gdh-dk);   --gdh-head-bg: var(--gdh-dkdk); --gdh-line: var(--gdh-dkdk); }\n.gnDocRd :is(.gd-deco, table.gd-table).gd-tone-dkdk { --gdh-bg: var(--gdh-dkdk); --gdh-head-bg: var(--gdh-dk);   --gdh-line: var(--gdh-dk); }\n.gnDocRd .gd-deco[class*=\"gd-tone-\"] .gd-deco-body { color: var(--gdh-auto-ink); }\n/* 濃い地の上の青いリンクは読めないので、地の文字色に合わせて下線で示す。 */\n.gnDocRd .gd-deco[class*=\"gd-tone-\"] .gd-deco-body a { color: inherit; text-decoration: underline; }\n/* 枠の内側の上下端に、段落の余白がそのまま出ると間延びする。 */\n.gnDocRd .gd-deco-body > :first-child { margin-top: 0; }\n.gnDocRd .gd-deco-body > :last-child { margin-bottom: 0; }\n/* ---------- フロー図の箱の色（表示機能拡張 第3段） ----------\n   ```flow は Mermaid へ書き換えて描かせる（決定9）。色だけはこちらで持つ。\n\n   **Mermaid の色指定は使えない。** 実測で分かったこと:\n     - `style n1 fill:var(--gd-bg-blue)` … パーサが `(` を受け付けず、図ごと落ちる\n     - `classDef gdf-blue fill:#eef`    … Mermaid が SVG の中へ **ID 付きの\n       `!important` 規則**を書くので、こちらの CSS が負ける（固定色になる）\n   そこで **色を持たない classDef でクラス名だけ付けさせ**、色はここで与える。\n   こうすると箱の色も本文・表・装飾枠と同じ変数から来る＝テーマに追従する。 */\n/* 箱の色は変数で渡す（Mermaid の箱とグリッドの箱で同じ規則を使う）。\n   --gf-fill 地／--gf-stroke 枠／--gf-ink 文字（濃淡付きのときだけ）。\n   色相だけ（{青}）と極淡（{ltltBlue}）… 極淡の地・淡の枠。文字は本文色（これまでの {青} と同じ）\n   淡 lt … 淡の地に黒文字（ライト系 4.96:1 以上・ダーク系 8.5:1 以上）\n   濃 dk … 濃の地に白文字（ライト系 7.7:1 以上）。**ダーク系は黒文字**（白 3.2:1／黒 4.9:1）\n   極濃 dkdk … 極濃の地に白文字（ライト系 12.9:1・ダーク系 4.67:1 以上）\n   値はどれも 2026-09-29 に9色相×2系統で計算した最小値。 */\n.gdf-red { --gf-fill: var(--gd-bg-red); --gf-stroke: var(--gd-c-ltred); }\n.gdf-orange { --gf-fill: var(--gd-bg-orange); --gf-stroke: var(--gd-c-ltorange); }\n.gdf-yellow { --gf-fill: var(--gd-bg-yellow); --gf-stroke: var(--gd-c-ltyellow); }\n.gdf-green { --gf-fill: var(--gd-bg-green); --gf-stroke: var(--gd-c-ltgreen); }\n.gdf-teal { --gf-fill: var(--gd-bg-teal); --gf-stroke: var(--gd-c-ltteal); }\n.gdf-blue { --gf-fill: var(--gd-bg-blue); --gf-stroke: var(--gd-c-ltblue); }\n.gdf-purple { --gf-fill: var(--gd-bg-purple); --gf-stroke: var(--gd-c-ltpurple); }\n.gdf-pink { --gf-fill: var(--gd-bg-pink); --gf-stroke: var(--gd-c-ltpink); }\n.gdf-gray { --gf-fill: var(--gd-bg-gray); --gf-stroke: var(--gd-c-ltgray); }\n.gdf-ltred { --gf-fill: var(--gd-c-ltred); --gf-stroke: var(--gd-c-red); --gf-ink: #1a1a1a; }\n.gdf-ltorange { --gf-fill: var(--gd-c-ltorange); --gf-stroke: var(--gd-c-orange); --gf-ink: #1a1a1a; }\n.gdf-ltyellow { --gf-fill: var(--gd-c-ltyellow); --gf-stroke: var(--gd-c-yellow); --gf-ink: #1a1a1a; }\n.gdf-ltgreen { --gf-fill: var(--gd-c-ltgreen); --gf-stroke: var(--gd-c-green); --gf-ink: #1a1a1a; }\n.gdf-ltteal { --gf-fill: var(--gd-c-ltteal); --gf-stroke: var(--gd-c-teal); --gf-ink: #1a1a1a; }\n.gdf-ltblue { --gf-fill: var(--gd-c-ltblue); --gf-stroke: var(--gd-c-blue); --gf-ink: #1a1a1a; }\n.gdf-ltpurple { --gf-fill: var(--gd-c-ltpurple); --gf-stroke: var(--gd-c-purple); --gf-ink: #1a1a1a; }\n.gdf-ltpink { --gf-fill: var(--gd-c-ltpink); --gf-stroke: var(--gd-c-pink); --gf-ink: #1a1a1a; }\n.gdf-ltgray { --gf-fill: var(--gd-c-ltgray); --gf-stroke: var(--gd-c-gray); --gf-ink: #1a1a1a; }\n.gdf-dkred { --gf-fill: var(--gd-c-dkred); --gf-stroke: var(--gd-c-dkdkred); --gf-ink: #fff; }\n.gdf-dkorange { --gf-fill: var(--gd-c-dkorange); --gf-stroke: var(--gd-c-dkdkorange); --gf-ink: #fff; }\n.gdf-dkyellow { --gf-fill: var(--gd-c-dkyellow); --gf-stroke: var(--gd-c-dkdkyellow); --gf-ink: #fff; }\n.gdf-dkgreen { --gf-fill: var(--gd-c-dkgreen); --gf-stroke: var(--gd-c-dkdkgreen); --gf-ink: #fff; }\n.gdf-dkteal { --gf-fill: var(--gd-c-dkteal); --gf-stroke: var(--gd-c-dkdkteal); --gf-ink: #fff; }\n.gdf-dkblue { --gf-fill: var(--gd-c-dkblue); --gf-stroke: var(--gd-c-dkdkblue); --gf-ink: #fff; }\n.gdf-dkpurple { --gf-fill: var(--gd-c-dkpurple); --gf-stroke: var(--gd-c-dkdkpurple); --gf-ink: #fff; }\n.gdf-dkpink { --gf-fill: var(--gd-c-dkpink); --gf-stroke: var(--gd-c-dkdkpink); --gf-ink: #fff; }\n.gdf-dkgray { --gf-fill: var(--gd-c-dkgray); --gf-stroke: var(--gd-c-dkdkgray); --gf-ink: #fff; }\n.gdf-dkdkred { --gf-fill: var(--gd-c-dkdkred); --gf-stroke: var(--gd-c-dkdkred); --gf-ink: #fff; }\n.gdf-dkdkorange { --gf-fill: var(--gd-c-dkdkorange); --gf-stroke: var(--gd-c-dkdkorange); --gf-ink: #fff; }\n.gdf-dkdkyellow { --gf-fill: var(--gd-c-dkdkyellow); --gf-stroke: var(--gd-c-dkdkyellow); --gf-ink: #fff; }\n.gdf-dkdkgreen { --gf-fill: var(--gd-c-dkdkgreen); --gf-stroke: var(--gd-c-dkdkgreen); --gf-ink: #fff; }\n.gdf-dkdkteal { --gf-fill: var(--gd-c-dkdkteal); --gf-stroke: var(--gd-c-dkdkteal); --gf-ink: #fff; }\n.gdf-dkdkblue { --gf-fill: var(--gd-c-dkdkblue); --gf-stroke: var(--gd-c-dkdkblue); --gf-ink: #fff; }\n.gdf-dkdkpurple { --gf-fill: var(--gd-c-dkdkpurple); --gf-stroke: var(--gd-c-dkdkpurple); --gf-ink: #fff; }\n.gdf-dkdkpink { --gf-fill: var(--gd-c-dkdkpink); --gf-stroke: var(--gd-c-dkdkpink); --gf-ink: #fff; }\n.gdf-dkdkgray { --gf-fill: var(--gd-c-dkdkgray); --gf-stroke: var(--gd-c-dkdkgray); --gf-ink: #fff; }\nbody.theme-dark [class*=\"gdf-dk\"]:not([class*=\"gdf-dkdk\"]):not([class*=\"gdf-dklt\"]) { --gf-ink: #1a1a1a; }\n/* やや淡 ltdk・やや濃 dklt（2026-10-07）。地は中間の濃さ、枠は1つ濃い段。\n   **文字は地の明るさから自動で決める**（相対輝度が 0.179 未満なら白、以上なら黒＝白と黒のうちコントラストが高い方）。\n   中間の段は色相とテーマで白黒どちらが読めるかが入れ替わるため、固定にすると必ずどこかで読めなくなる。 */\n.gdf-ltdkred { --gf-fill: var(--gd-c-ltdkred); --gf-stroke: var(--gd-c-dkred); }\n.gdf-dkltred { --gf-fill: var(--gd-c-dkltred); --gf-stroke: var(--gd-c-dkdkred); }\n.gdf-ltdkorange { --gf-fill: var(--gd-c-ltdkorange); --gf-stroke: var(--gd-c-dkorange); }\n.gdf-dkltorange { --gf-fill: var(--gd-c-dkltorange); --gf-stroke: var(--gd-c-dkdkorange); }\n.gdf-ltdkyellow { --gf-fill: var(--gd-c-ltdkyellow); --gf-stroke: var(--gd-c-dkyellow); }\n.gdf-dkltyellow { --gf-fill: var(--gd-c-dkltyellow); --gf-stroke: var(--gd-c-dkdkyellow); }\n.gdf-ltdkgreen { --gf-fill: var(--gd-c-ltdkgreen); --gf-stroke: var(--gd-c-dkgreen); }\n.gdf-dkltgreen { --gf-fill: var(--gd-c-dkltgreen); --gf-stroke: var(--gd-c-dkdkgreen); }\n.gdf-ltdkteal { --gf-fill: var(--gd-c-ltdkteal); --gf-stroke: var(--gd-c-dkteal); }\n.gdf-dkltteal { --gf-fill: var(--gd-c-dkltteal); --gf-stroke: var(--gd-c-dkdkteal); }\n.gdf-ltdkblue { --gf-fill: var(--gd-c-ltdkblue); --gf-stroke: var(--gd-c-dkblue); }\n.gdf-dkltblue { --gf-fill: var(--gd-c-dkltblue); --gf-stroke: var(--gd-c-dkdkblue); }\n.gdf-ltdkpurple { --gf-fill: var(--gd-c-ltdkpurple); --gf-stroke: var(--gd-c-dkpurple); }\n.gdf-dkltpurple { --gf-fill: var(--gd-c-dkltpurple); --gf-stroke: var(--gd-c-dkdkpurple); }\n.gdf-ltdkpink { --gf-fill: var(--gd-c-ltdkpink); --gf-stroke: var(--gd-c-dkpink); }\n.gdf-dkltpink { --gf-fill: var(--gd-c-dkltpink); --gf-stroke: var(--gd-c-dkdkpink); }\n.gdf-ltdkgray { --gf-fill: var(--gd-c-ltdkgray); --gf-stroke: var(--gd-c-dkgray); }\n.gdf-dkltgray { --gf-fill: var(--gd-c-dkltgray); --gf-stroke: var(--gd-c-dkdkgray); }\n[class*=\"gdf-ltdk\"], [class*=\"gdf-dklt\"] { --gf-ink: rgb(from var(--gf-fill) clamp(0, (0.179 - (0.2126 * pow(r / 255, 2.2) + 0.7152 * pow(g / 255, 2.2) + 0.0722 * pow(b / 255, 2.2))) * 100000, 255) clamp(0, (0.179 - (0.2126 * pow(r / 255, 2.2) + 0.7152 * pow(g / 255, 2.2) + 0.0722 * pow(b / 255, 2.2))) * 100000, 255) clamp(0, (0.179 - (0.2126 * pow(r / 255, 2.2) + 0.7152 * pow(g / 255, 2.2) + 0.0722 * pow(b / 255, 2.2))) * 100000, 255)); }\n/* 三角（新しい書き方 @{ shape: tri }）は path で描かれるので path も塗る。\n   ラベルの下敷きの rect も同じ色で塗られるが、地と同色なので見た目は変わらない。 */\n/* .gnDocRd-print（Ctrl+P の写し）にも効かせる。.gnDocRd だけだと Ctrl+P で箱の色が消え、Mermaid の既定の薄紫で刷られていた（v0.4.0z） */\n:is(.gnDocRd, .gnDocRd-print) .mermaid .node[class*=\"gdf-\"] :is(rect, polygon, circle, path) {\n    fill: var(--gf-fill) !important; stroke: var(--gf-stroke) !important;\n}\n/* 文字。色相だけ（{青}）と極淡は**本文の字の色**（地が本文と同じ変数から来るので、本文の字なら必ず読める）。\n   以前は Mermaid が描いた字の色のまま（v0.4.0z で Mermaid をいつも明るい色で描くようにしたので、暗いテーマで暗い地に濃い字になる） */\n:is(.gnDocRd, .gnDocRd-print) .mermaid .node[class*=\"gdf-\"] .nodeLabel { color: var(--gf-ink, var(--text-color)) !important; }\n:is(.gnDocRd, .gnDocRd-print) .mermaid .node[class*=\"gdf-\"] text { fill: var(--gf-ink, var(--text-color)) !important; }\n/* ---------- フロー図のグリッド配置（HTML で組む） ----------\n   寸法は描画側が % で決める（箱の幅・隙間）。ここは見た目だけ。\n   線と矢じりの色は本文色を少し弱めたもの。 */\n.gnDocRd .flowgrid { margin: 16px 0; --fg-line-color: color-mix(in srgb, var(--text-color) 72%, transparent); }\n.gnDocRd .flowgrid .fg-row { display: flex; align-items: stretch; }\n.gnDocRd .flowgrid .fg-box {\n    position: relative; box-sizing: border-box; flex: 0 0 auto;\n    display: flex; align-items: center; justify-content: center; text-align: center;\n    min-height: 48px; padding: 8px 10px; line-height: 1.4;\n    background: var(--gf-fill); border: 1px solid var(--gf-stroke); border-radius: 10px;\n    color: var(--gf-ink, var(--text-color));\n}\n.gnDocRd .flowgrid .fg-rect { border-radius: 0; }\n.gnDocRd .flowgrid .fg-circle { border-radius: 50%; min-height: 64px; }\n.gnDocRd .flowgrid .fg-circle .fg-label { max-width: 76%; }\n/* 菱形・三角は枠を SVG の多角形で描く（CSS の枠は斜めに引けない）。文字が斜辺に掛からないよう内側へ寄せる。\n   **余白を % で書かない。** padding の % は箱ではなく親（行）の幅が基準になり、箱が行からはみ出す\n   （2026-09-29 に実際にはみ出した）。文字の幅の上限を、箱に対する % で与える。 */\n.gnDocRd .flowgrid :is(.fg-diamond, .fg-tri, .fg-flip) { background: none; border: 0; min-height: 76px; }\n.gnDocRd .flowgrid .fg-diamond { padding: 16px 0; }\n.gnDocRd .flowgrid .fg-diamond .fg-label { max-width: 52%; }\n.gnDocRd .flowgrid .fg-tri { padding: 30px 0 8px; }\n.gnDocRd .flowgrid .fg-flip { padding: 8px 0 30px; }\n.gnDocRd .flowgrid :is(.fg-tri, .fg-flip) .fg-label { max-width: 56%; }\n.gnDocRd .flowgrid .fg-shape { position: absolute; inset: 0; width: 100%; height: 100%; }\n.gnDocRd .flowgrid .fg-shape polygon { fill: var(--gf-fill); stroke: var(--gf-stroke); stroke-width: 1px; vector-effect: non-scaling-stroke; }\n.gnDocRd .flowgrid .fg-label { position: relative; }\n.gnDocRd .flowgrid .fg-label p { margin: 0; }\n/* 箱の中身（見出しの下に「・」付きで並ぶ行）。縦の flow（Mermaid）と同じく中央揃え。 */\n.gnDocRd .flowgrid .fg-items { display: block; margin-top: 2px; }\n.gnDocRd .flowgrid .fg-item { display: block; }\n.gnDocRd .flowgrid .fg-gap { position: relative; flex: 0 0 auto; }\n.gnDocRd .flowgrid .fg-line { position: absolute; left: 3px; right: 3px; top: 50%; border-top: 1.5px solid var(--fg-line-color); }\n.gnDocRd .flowgrid .fg-line.fg-thick { border-top-width: 3.5px; }\n.gnDocRd .flowgrid .fg-line.fg-dashed { border-top-style: dashed; }\n.gnDocRd .flowgrid .fg-head { position: absolute; width: 0; height: 0; border: 5px solid transparent; }\n.gnDocRd .flowgrid .fg-head.fg-thick { border-width: 7px; }\n.gnDocRd .flowgrid .fg-line .fg-head-left  { left: -3px;  top: -1px; transform: translateY(-50%); border-left: 0;  border-right: 9px solid var(--fg-line-color); }\n.gnDocRd .flowgrid .fg-line .fg-head-right { right: -3px; top: -1px; transform: translateY(-50%); border-right: 0; border-left: 9px solid var(--fg-line-color); }\n.gnDocRd .flowgrid .fg-line.fg-thick .fg-head { border-top-width: 7px; border-bottom-width: 7px; }\n.gnDocRd .flowgrid .fg-gap-label {\n    position: absolute; left: 50%; bottom: calc(50% + 5px); transform: translateX(-50%);\n    font-size: 12px; white-space: nowrap; color: var(--text-color);\n}\n.gnDocRd .flowgrid .fg-lane { position: relative; }\n.gnDocRd .flowgrid .fg-lane-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }\n.gnDocRd .flowgrid .fg-path { fill: none; stroke: var(--fg-line-color); stroke-width: 1.5; stroke-linecap: square; }\n.gnDocRd .flowgrid .fg-path.fg-thick { stroke-width: 3.5; }\n.gnDocRd .flowgrid .fg-path.fg-dashed { stroke-dasharray: 5 4; }\n/* 通路の矢じりは常に真上か真下を向く（縦→横→縦で引くため）。 */\n.gnDocRd .flowgrid .fg-head-down { transform: translate(-50%, -100%); border-bottom: 0; border-top: 9px solid var(--fg-line-color); }\n.gnDocRd .flowgrid .fg-head-up   { transform: translate(-50%, 0);     border-top: 0;    border-bottom: 9px solid var(--fg-line-color); }\n.gnDocRd .flowgrid .fg-head-down.fg-thick { border-top-width: 12px; }\n.gnDocRd .flowgrid .fg-head-up.fg-thick   { border-bottom-width: 12px; }\n.gnDocRd .flowgrid .fg-lane-label {\n    position: absolute; transform: translate(-50%, -50%); font-size: 12px; line-height: 16px; white-space: nowrap;\n    background: var(--bg-color); padding: 0 4px; color: var(--text-color);\n}\n/* まっすぐ縦の線の見出しは、線の右へ（線と矢じりを隠さない） */\n.gnDocRd .flowgrid .fg-lane-label.fg-side { transform: translate(5px, -50%); }\n.gnDocRd .flowgrid .fg-note, .gnDocRd .mermaid > .fg-note { margin-top: 8px; font-size: 12px; color: var(--gd-c-orange); text-align: left; }\n/* ---------- 枠つきのフロー図・cols（v0.3.18b・2026-10-08 仮仕様） ----------\n   枠・箱・説明文は HTML で組み、線は描いた後に測って .gx-lines（SVG）に引く（gxDraw）。\n   左右に 14px の余白を取るのは、端の枠から出る線の通り道（溝）にするため。 */\n.gnDocRd .gx { position: relative; margin: 16px 0; padding: 0 14px; --gx-line: color-mix(in srgb, var(--text-color) 72%, transparent); }\n/* 入れ子の図（cols の中の flow）は、線の色を列から引き継ぐ */\n.gnDocRd .gx .gx { margin: 6px 0; padding: 0; --gx-line: inherit; }\n.gnDocRd .gx-band { display: flex; align-items: stretch; }\n.gnDocRd .gx-band + .gx-band { margin-top: 26px; }\n.gnDocRd .gx-gap { flex: 0 0 28px; }\n.gnDocRd .gx-cols .gx-gap { flex-basis: 18px; }\n.gnDocRd .gx-frame {\n    box-sizing: border-box; min-width: 0; padding: 10px 14px 14px; border-radius: 8px;\n    border: 1.5px solid color-mix(in srgb, var(--gdh-ink) 70%, var(--bg-color)); background: var(--gdh-bg);\n    --gx-line: var(--gdh-ink);\n}\n.gnDocRd .gx-frame.gx-bare { border: 0; background: none; padding: 0; --gx-line: inherit; }\n.gnDocRd .gx-title { font-weight: bold; color: var(--gdh-ink); margin-bottom: 8px; line-height: 1.4; }\n.gnDocRd .gx-row { display: flex; justify-content: space-between; align-items: stretch; }\n.gnDocRd :is(.gx-row, .gx-note) + :is(.gx-row, .gx-note) { margin-top: 10px; }\n.gnDocRd .gx-lane { height: 26px; }\n.gnDocRd .gx-box {\n    box-sizing: border-box; flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; align-items: center;\n    text-align: center; min-height: 40px; padding: 6px 10px; line-height: 1.4; border-radius: 8px;\n    background: var(--gf-fill); border: 1px solid var(--gf-stroke); color: var(--gf-ink, var(--text-color));\n}\n/* 色を書かない箱は地の色（色の付いた枠の中で浮いて見える。元の図の書き方） */\n/* border は一度に書く（--gf-stroke の無い箱で、上の border が変数ごと無効になり太さ 0 になるため） */\n.gnDocRd .gx-box.gx-plain { background: var(--bg-color); border: 1px solid color-mix(in srgb, var(--gx-line) 55%, var(--bg-color)); }\n.gnDocRd .gx-box.gx-rect { border-radius: 0; }\n.gnDocRd .gx-label :is(p) { margin: 0; }\n.gnDocRd .gx-items { display: block; margin-top: 2px; }\n.gnDocRd .gx-item { display: block; font-size: 0.88em; color: color-mix(in srgb, currentColor 78%, transparent); }\n.gnDocRd .gx-note { font-size: 0.92em; line-height: 1.5; color: color-mix(in srgb, var(--text-color) 82%, transparent); }\n/* 仕切り: 点線と、下に文字。矢印（data-gx-arrow）は線と一緒に SVG で描く */\n.gnDocRd .gx-div { flex: 0 0 104px; position: relative; min-height: 40px; }\n.gnDocRd .gx-div-line { position: absolute; top: -8px; bottom: 20px; left: calc(50% - 1px); border-left: 2px dashed color-mix(in srgb, var(--text-color) 45%, var(--bg-color)); }\n.gnDocRd .gx-div-label {\n    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); white-space: nowrap;\n    font-size: 12px; font-weight: bold; color: color-mix(in srgb, var(--text-color) 65%, var(--bg-color));\n}\n.gnDocRd .gx-lines { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }\n.gnDocRd .gx-msg:empty { display: none; }\n.gnDocRd :is(.gx-msg, .gx-note-err) { margin-top: 8px; font-size: 12px; color: var(--gd-c-orange); }\n/* cols の列は装飾枠の見た目のまま（上下の余白だけ外して、段の中で高さをそろえる） */\n.gnDocRd .gx-cols .gx-col { min-width: 0; box-sizing: border-box; }\n.gnDocRd .gx-cols .gx-col.gd-deco { margin: 0; --gx-line: var(--gdh-ink); }\n/* 印刷・単一HTML書き出しでは素の SVG に差し替わる */\n.gnDocRd .gx-svg { margin: 16px 0; }\n.gnDocRd .gx-svg > svg { max-width: 100%; height: auto; }\n/* ---------- 部品（```timeline / ```kpi / ```gantt-lite。2026-10-07） ----------\n   色は .gd-hue-X の変数（--gdh-tint 極淡・--gdh-lt 淡・--gdh-base 標準）と、棒は .gdf-X（--gf-fill/stroke/ink）から取る。\n   色の付かない所は本文色と灰の変数だけで描く＝テーマに追従する。 */\n.gnDocRd .gdpart { margin: 16px 0; --gp-line: color-mix(in srgb, var(--text-color) 30%, transparent); }\n.gnDocRd .gdpart .gp-note { margin-top: 8px; font-size: 12px; color: var(--gd-c-orange); }\n.gnDocRd .gdpart .gp-raw { margin: 0; padding: 8px 10px; font-size: 13px; white-space: pre-wrap; background: var(--gd-bg-gray); }\n/* timeline … 左に時点、縦の軸に点、右に出来事 */\n.gnDocRd .gd-timeline .gt-list { list-style: none; margin: 0; padding: 0; }\n.gnDocRd .gd-timeline .gt-item { display: grid; grid-template-columns: minmax(5em, max-content) 22px 1fr; align-items: start; position: relative; }\n/* 縦の線。絶対配置でも grid-column を書くと、その列が基準になる（列2の中央＝22px の半分）*/\n.gnDocRd .gd-timeline .gt-item::before { content: ''; position: absolute; top: 0; bottom: 0; grid-column: 2; left: 10px; width: 2px; background: var(--gp-line); }\n.gnDocRd .gd-timeline .gt-item:first-child::before { top: 0.8em; }\n.gnDocRd .gd-timeline .gt-item:last-child::before { bottom: calc(100% - 0.8em); }\n.gnDocRd .gd-timeline .gt-time { grid-column: 1; padding: 4px 10px 12px 0; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--text-color) 75%, transparent); }\n.gnDocRd .gd-timeline .gt-dot { grid-column: 2; justify-self: center; position: relative; z-index: 1; width: 10px; height: 10px; margin-top: 0.55em; border-radius: 50%;\n    background: var(--gdh-base, var(--gd-c-gray)); border: 2px solid var(--bg-color); box-sizing: content-box; }\n.gnDocRd .gd-timeline .gt-body { grid-column: 3; padding: 4px 0 12px 6px; }\n.gnDocRd .gd-timeline .gt-tag { display: inline-block; margin-left: 8px; padding: 0 7px; border-radius: 9px; font-size: 12px; line-height: 1.6;\n    background: var(--gdh-tint, var(--gd-bg-gray)); border: 1px solid var(--gdh-lt, var(--gd-c-ltgray)); }\n.gnDocRd .gd-timeline .gt-milestone .gt-dot { border-radius: 1px; transform: rotate(45deg); }\n.gnDocRd .gd-timeline .gt-important .gt-event { font-weight: bold; }\n.gnDocRd .gd-timeline .gt-important .gt-dot { width: 12px; height: 12px; margin-top: 0.45em; }\n/* kpi … 指標カード。地は極淡、左に標準の帯。値は大きく */\n.gnDocRd .gd-kpi .gk-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }\n.gnDocRd .gd-kpi .gk-card { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--gdh-lt, var(--gd-c-ltgray));\n    border-left: 4px solid var(--gdh-base, var(--gd-c-ltgray)); background: var(--gdh-tint, var(--gd-bg-gray)); }\n.gnDocRd .gd-kpi .gk-name { font-size: 13px; color: color-mix(in srgb, var(--text-color) 75%, transparent); }\n.gnDocRd .gd-kpi .gk-value { font-size: 1.7em; font-weight: bold; line-height: 1.3; font-variant-numeric: tabular-nums; }\n.gnDocRd .gd-kpi .gk-trend { font-size: 13px; }\n.gnDocRd .gd-kpi .gk-arrow { font-weight: bold; margin-right: 4px; color: var(--gdh-dk, inherit); }\n.gnDocRd .gd-kpi :is(.gk-name, .gk-value, .gk-trend) p { margin: 0; }\n/* gantt-lite … 左に作業名、右に横棒。目盛りの縦線は各行に引く */\n.gnDocRd .gd-gantt { font-size: 13px; }\n.gnDocRd .gd-gantt .gg-row { display: flex; align-items: stretch; min-height: 26px; }\n.gnDocRd .gd-gantt .gg-name { flex: 0 0 9em; padding: 3px 8px 3px 0; overflow-wrap: anywhere; }\n.gnDocRd .gd-gantt .gg-track { position: relative; flex: 1 1 auto; border-left: 1px solid var(--gp-line); }\n.gnDocRd .gd-gantt .gg-head .gg-track { height: 22px; border-bottom: 1px solid var(--gp-line); }\n.gnDocRd .gd-gantt .gg-tick { position: absolute; bottom: 3px; padding-left: 3px; white-space: nowrap; font-size: 11px; color: color-mix(in srgb, var(--text-color) 70%, transparent); }\n.gnDocRd .gd-gantt .gg-line { position: absolute; top: 0; bottom: 0; border-left: 1px dotted var(--gp-line); }\n.gnDocRd .gd-gantt .gg-group { margin-top: 6px; padding: 2px 0; font-weight: bold; border-bottom: 1px solid var(--gp-line); }\n.gnDocRd .gd-gantt .gg-bar { position: absolute; top: 5px; bottom: 5px; min-width: 2px; box-sizing: border-box; overflow: hidden;\n    border-radius: 4px; background: var(--gf-fill); border: 1px solid var(--gf-stroke); }\n.gnDocRd .gd-gantt .gg-prog { position: absolute; left: 0; top: 0; bottom: 0; background: var(--gf-stroke); opacity: 0.55; }\n.gnDocRd .gd-gantt .gg-pct { position: relative; display: block; padding: 0 4px; font-size: 11px; line-height: 14px; color: var(--gf-ink, var(--text-color)); }\n.gnDocRd .gd-gantt .gg-ms { position: absolute; top: 50%; width: 12px; height: 12px; transform: translate(-50%, -50%) rotate(45deg);\n    background: var(--gf-stroke); border: 1px solid var(--gf-stroke); }\n/* steps … 番号の丸と手順。注記は手順の下に小さく（v0.4.0o） */\n.gnDocRd .gd-steps .gs-list { list-style: none; margin: 0; padding: 0; counter-reset: none; }\n.gnDocRd .gd-steps .gs-item { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; border-bottom: 1px dotted var(--gp-line); }\n.gnDocRd .gd-steps .gs-item:last-child { border-bottom: none; }\n.gnDocRd .gd-steps .gs-num { flex: 0 0 auto; width: 1.7em; height: 1.7em; line-height: 1.7em; border-radius: 50%; text-align: center; font-weight: bold; font-size: 0.9em;\n    border: 1px solid var(--gp-line); font-variant-numeric: tabular-nums; }\n.gnDocRd .gd-steps .gs-body { flex: 1 1 auto; min-width: 0; padding-top: 0.15em; }\n.gnDocRd .gd-steps .gs-note { margin-top: 3px; padding: 1px 8px; font-size: 0.88em; border-left: 3px solid var(--gdh-base, var(--gp-line));\n    background: var(--gdh-tint, transparent); color: color-mix(in srgb, var(--text-color) 85%, transparent); }\n.gnDocRd .gd-steps :is(.gs-text, .gs-note) p { margin: 0; }\n/* faq … 問いを押すと答えが開く（既定は閉じる） */\n.gnDocRd .gd-faq .gq-item { border: 1px solid var(--gp-line); border-radius: 6px; margin: 6px 0; }\n.gnDocRd .gd-faq .gq-item > summary { cursor: pointer; padding: 7px 10px; font-weight: bold; list-style-position: inside; }\n.gnDocRd .gd-faq .gq-item[open] > summary { border-bottom: 1px dotted var(--gp-line); }\n.gnDocRd .gd-faq .gq-answer { display: flex; gap: 8px; padding: 8px 10px; }\n.gnDocRd .gd-faq .gq-body { flex: 1 1 auto; min-width: 0; }\n.gnDocRd .gd-faq .gq-body > :first-child { margin-top: 0; }\n.gnDocRd .gd-faq .gq-body > :last-child { margin-bottom: 0; }\n.gnDocRd .gd-faq .gq-mark { display: inline-block; min-width: 1.4em; margin-right: 4px; font-weight: bold; color: var(--gd-c-blue); }\n.gnDocRd .gd-faq .gq-mark-a { color: var(--gd-c-green); }\n/* progress … 項目・横棒・値。色を書かない棒は灰 */\n.gnDocRd .gd-progress { font-size: 13px; }\n.gnDocRd .gd-progress .gpr-row { display: flex; align-items: center; gap: 8px; min-height: 24px; }\n.gnDocRd .gd-progress .gpr-name { flex: 0 0 9em; overflow-wrap: anywhere; }\n.gnDocRd .gd-progress .gpr-track { position: relative; flex: 1 1 auto; height: 12px; border-radius: 6px; border: 1px solid var(--gp-line); overflow: hidden; }\n.gnDocRd .gd-progress .gpr-bar { position: absolute; left: 0; top: 0; bottom: 0; background: var(--gf-stroke); }\n.gnDocRd .gd-progress .gpr-val { flex: 0 0 auto; min-width: 3.5em; text-align: right; font-variant-numeric: tabular-nums; }\n.gnDocRd .gd-progress .gpr-text { color: color-mix(in srgb, var(--text-color) 70%, transparent); }\n.gnDocRd .gd-progress .gpr-group { margin-top: 6px; padding: 2px 0; font-weight: bold; border-bottom: 1px solid var(--gp-line); }\n.gnDocRd .gd-progress :is(.gpr-name, .gpr-group) p { margin: 0; }\n/* matrix … 2×2。狭い所では1列に崩れる。地は .gdf-X（極淡が既定） */\n.gnDocRd .gd-matrix .gm-axis { font-size: 12px; margin-bottom: 4px; color: color-mix(in srgb, var(--text-color) 70%, transparent); }\n.gnDocRd .gd-matrix .gm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }\n.gnDocRd .gd-matrix .gm-cell { padding: 8px 12px; border-radius: 8px; background: var(--gf-fill); border: 1px solid var(--gf-stroke); color: var(--gf-ink, inherit); min-height: 4em; }\n.gnDocRd .gd-matrix .gm-title { font-weight: bold; margin-bottom: 4px; }\n.gnDocRd .gd-matrix .gm-items { margin: 0; padding-left: 1.2em; }\n.gnDocRd .gd-matrix .gm-items p { margin: 0; }\n@media print { .gnDocRd .gd-matrix .gm-grid { grid-template-columns: 1fr 1fr; } .gnDocRd :is(.gd-matrix, .gd-steps, .gd-progress, .gd-faq .gq-item) { break-inside: avoid; } }\n/* 罫線の3通り。既定（指定なし）は行間だけ薄い実線。 */\n.gnDocRd table.gd-border-dashed-row td { border-bottom: 1px dashed var(--gdh-line); }\n.gnDocRd table.gd-border-dashed-row { border: 1px solid var(--gdh-line); }\n.gnDocRd table.gd-border-grid th, .gnDocRd table.gd-border-grid td { border: 1px solid var(--gdh-line); }\n.gnDocRd table.gd-border-clean th, .gnDocRd table.gd-border-clean td { border-left: none; border-right: none; }\n/* 枠付き（border=frame。v0.4.1v）: 外枠は角丸 6px、中は縦横の細線。角を丸めるため collapse をやめ、線はセルの右と下に引く。\n   外枠の色は line=（--gdt-frame）→ theme の標準の段 → アクセント色。中の線は theme の線の色、無ければ文字色を薄めた物 */\n/* 色を書かない表の外枠の色（--gdt-accent）は、使う側が差し替えられる（gnDoc のアプリはアクセント色。この区切りの外で） */\n.gnDocRd table.gd-border-frame {\n    --gdt-accent: #3b82f6;\n    --gdt-frame: var(--gdh-base, var(--gdt-accent));\n    border-collapse: separate; border-spacing: 0; border-radius: 6px; overflow: hidden;\n    border: 1px solid var(--gdt-frame);\n    --gdt-in: var(--gdh-line, color-mix(in srgb, currentColor 18%, transparent));\n}\n.gnDocRd table.gd-border-frame th, .gnDocRd table.gd-border-frame td { border: 0; border-right: 1px solid var(--gdt-in); border-bottom: 1px solid var(--gdt-in); }\n.gnDocRd table.gd-border-frame tr > :last-child { border-right: 0; }\n.gnDocRd table.gd-border-frame tbody tr:last-child > * { border-bottom: 0; }\n.gnDocRd table.gd-border-frame:not(:has(tbody tr)) thead tr:last-child > * { border-bottom: 0; }\n/* 見出しの列（head=col / both。v0.4.1v）。col は見出し行を出さない（「項目・内容」の行は書くが見せない） */\n.gnDocRd table.gd-head-col thead { display: none; }\n.gnDocRd table:is(.gd-head-col, .gd-head-both) tbody td:first-child {\n    font-weight: bold; background: var(--gdh-head-bg, color-mix(in srgb, currentColor 7%, transparent)); color: var(--gdh-head-ink, inherit);\n}\n/* 印刷でも配色を残す。淡い塗りの上の文字色を明示しないと、\n   紙でもダークテーマでも読めなくなる（v0.3.7 で実際に踏んだ）。 */\n@media print {\n    .gnDocRd table.gd-table th { background: var(--gdh-head-bg) !important; color: var(--gdh-head-ink) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n    .gnDocRd table.gd-table td { background: var(--gdh-bg) !important; color: var(--gdh-ink) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n    .gnDocRd table:is(.gd-head-col, .gd-head-both) tbody td:first-child { background: var(--gdh-head-bg, color-mix(in srgb, currentColor 7%, transparent)) !important; color: var(--gdh-head-ink, inherit) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n    .gnDocRd table.gd-border-frame { -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n    .gnDocRd .gd-deco { background: var(--gdh-bg) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n    .gnDocRd .gd-deco-title { background: var(--gdh-head-bg) !important; color: var(--gdh-head-ink) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n    /* 枠が紙の境目で割れると、帯だけが前のページに残る。 */\n    .gnDocRd .gd-deco { break-inside: avoid; page-break-inside: avoid; }\n    /* **地の色は、印刷の窓の「背景のグラフィック」に頼らず刷る**（v0.3.18t）。\n       exe（WebView2）の印刷の窓はこれが既定で切れていて、色を残す指定の無いもの（フロー図のグリッドの箱・\n       ガントの棒・コードの地など）だけが白くなった（表と装飾枠は上の指定で色が残るので、紙面がちぐはぐになる）。\n       この指定は子へ受け継がれるので、本文の根元に1つ置けば全部に効く。 */\n    .gnDocRd, .gnDocRd-print { -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n    /* **図は1頁に収める**（v0.3.18t・利用者「フローについて 1ページに収まるサイズに調整した上で、印刷する」）。\n       縦に長い図（```flow{dir=縦} など）は、幅の上限（以前の 🖨 では頁の半分。v0.4.0w から紙の幅いっぱい・.gd-print-fit）だけでは頁の高さを越えて2頁に割れた。\n       高さの上限を頁の高さ（印刷では vh が用紙の刷れる範囲の高さになる）の85%に置き（残りは前の見出しと下の「図 N:」の分）、図は縦横の比を保って縮む。\n       それでも収まらない残りの頁に掛からないよう、途中で割らずに次の頁の頭から刷る。 */\n    :is(.gnDocRd, .gnDocRd-print) :is(.mermaid, .flowgrid, .wavedrom, .plantuml, .graphviz, .d2, .dbml) { break-inside: avoid; page-break-inside: avoid; }\n    :is(.gnDocRd, .gnDocRd-print) :is(.mermaid, .wavedrom, .graphviz) svg,\n    :is(.gnDocRd, .gnDocRd-print) :is(.plantuml, .graphviz, .d2, .dbml) img { max-height: 85vh !important; }\n    /* 図が次の頁へ送られると、その前の見出しだけが頁の下に取り残される。見出しは次の物と同じ頁へ付ける。 */\n    :is(.gnDocRd, .gnDocRd-print) :is(h1, h2, h3, h4, h5, h6) { break-after: avoid; page-break-after: avoid; }\n}\n/* div. で修飾するのは、markmap-view が生成する<svg>自体に（内部CSS変数スコープ用に）\n   \"markmap\"クラスを付与しており、素の.markmapセレクタだとdivコンテナだけでなく\n   そのsvgにも二重にmargin/padding/border等が適用され、右下に大きくはみ出す不具合の\n   原因になっていたため（詳細はdiv.markmap規則側のコメント参照）。他タイプは実害未確認\n   だが同種の衝突を予防するため一律でdiv.修飾する。 */\ndiv.mermaid, div.wavedrom, div.plantuml, div.chartjs, div.dbml, div.d2, div.graphviz, div.markmap, div.cytoscape {\n    margin: 24px 0; background: #fff; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;\n}\ndiv.cytoscape { height: 420px; position: relative; }\n.chart-row {\n    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 24px 0;\n}\n.chart-row > .chartjs { margin: 0; }\npre.mermaid-error { color: #c00; background: #fff0f0; border: 1px solid #c00; border-radius: 4px; padding: 8px 12px; font-size: 12px; white-space: pre-wrap; word-break: break-all; margin: 0; }\n/* ツールバー（右上）とエラー本文が重ならないよう、エラー表示だけ右側を空ける。 */\nfigure { margin: 1.5em 0; }\nfigcaption { text-align: center; font-size: 0.9em; color: #666; margin-top: 6px; }\nbody.theme-dark figcaption { color: #aaa; }\n/* ---- 印刷の透かし（v0.4.0h） ----\n   利用者「印刷時にウォーターマーク（透かし風）追加出来る機能」。**画面には出さず、刷るときだけ出す。**\n   position:fixed の要素は印刷で全ページに繰り返し刷られる（Chromium。下の @media print の注記と同じ性質）ので、それで各ページに置く。\n   前面（gd-wm-front）は本文の上に淡く重ねる（表や枠の地に隠れない）。背面（gd-wm-back）は本文の下に敷く:\n   透かしを z-index:0、すぐ後ろの本文（.gnDocRd・.gnDocRd-print）を z-index:1 にする（地の色を持つ表や枠の所では隠れる）。\n   🖨 の写し・Ctrl+P・単一HTML の3つともこの規則（collectExportStyles で写る）と、本文の直前に置いた <div class=\"gd-watermark\"> で刷る。\n   中身は gnDocRd.print.watermark が作る（v0.4.1 で gnDocRd の CSS へ移した） */\n.gd-watermark { display: none; }\n@media print {\n    .gd-watermark { display: block !important; position: fixed; inset: 0; pointer-events: none;\n        -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n    .gd-watermark > svg { display: block; width: 100%; height: 100%; }\n    .gd-watermark.gd-wm-front { z-index: 2147483000; }\n    .gd-watermark.gd-wm-back { z-index: 0; }\n    .gd-watermark.gd-wm-back ~ .gnDocRd, .gd-watermark.gd-wm-back ~ .gnDocRd-print { position: relative; z-index: 1; background: transparent !important; }\n}\n@media print {\n    :is(.gnDocRd, .gnDocRd-print) { --gd-print-w: 100%; --gd-max-w: 100%; --gd-ar: 1000; --gd-frame-w: auto; }\n    /* **図は紙の幅いっぱい。縦に長い図は、刷れる高さの 85% に収まるよう縮める**（v0.4.0w。gnDocRd.print の「図の大きさ」の注記）。\n       --gd-ar・--gd-print-w・--gd-max-w は gnDocRd.print.snapshot が写しの図に書く（既定値は本文の入れ物に持たせる。v0.4.1 で gnDocRd の CSS へ戻した）。\n       幅 = min(上限, 85vh × 横÷縦, 元の幅)。上限は {print=60%} の指定、無ければ 100%。--gd-ar・--gd-max-w は写しを作るときに入れる\n       （小さい図は元の大きさより広げない。v0.4.0y。{print=…} を書いた図には --gd-max-w を入れない） */\n    :is(.gnDocRd, .gnDocRd-print) .gd-print-fit {\n        width: min(var(--gd-print-w, 100%), calc(85vh * var(--gd-ar, 1000)), var(--gd-max-w, 100%)) !important;\n        max-width: 100% !important; height: auto !important; display: block !important; margin-left: auto !important; margin-right: auto !important;\n    }\n    /* **{print=60%} は図の表示範囲（枠・地・余白ごと）の幅**（v0.4.1a。利用者「該当チャートの表示範囲全体のサイズを調整する機能のはず」）。\n       以前は中の図（svg）だけを 60% にしていたので、枠は 100% のまま残り、紙では効いていないように見えた。\n       枠の幅は --gd-frame-w（snapshot が書く）。中の図は枠いっぱい（--gd-print-w は 100% のまま）で、縦に長い図は今までどおり高さで縮む。\n       HTML で組む図（グリッドの flow）も同じ決まりで、幅の指定だけが効く */\n    :is(.gnDocRd, .gnDocRd-print) [data-gd-print] { width: var(--gd-frame-w, auto) !important; max-width: 100% !important; box-sizing: border-box !important; margin-left: auto !important; margin-right: auto !important; }\n}\n\n/* ---------- 拡張記法: 文字色 {red:…} と枠囲み [[…]] ---------- */\n/* 色はテーマ変数にしておき、ダーク系では明度を上げて可読性を確保する。\n   任意色（#rrggbb）だけは style 属性で出すため、書式を厳密に検証してから使う。\n   DOMPurify の既定設定は style を素通しする（url(javascript:) すら残ることを実測）ので、\n   利用者が書いた文字列をそのまま style へ流さないこと。 */\n/* 濃(dk)/淡(lt)は「そのテーマにおける濃い/淡い」であって、CSSの darkred(#8B0000) 等の\n   固定色ではない。固定値を入れると系統をまたいだ瞬間に破綻する（#8B0000 は Tokyo Night の\n   背景に対して約1.7:1 で読めない）。値は全テーマ背景に対するコントラスト比を計算で詰めてある。\n     ライト系: 濃 6.7〜9.0:1（AA以上）／淡 3.0:1（AA Large の下限を死守）\n     ダーク系: 濃 4.0:1（既存のライト系標準色と同水準）／淡 7.0〜10.0:1\n   セピア系は :root を継承する。セピア専用に解き直しても最も濃い dark-sepia 背景で\n   2.13:1 対 2.09:1 とほぼ変わらず、変数を1系統増やすだけの価値が無いため。\n   **淡色はセピア系（特に dark-sepia）で約2.1:1まで落ちる。装飾用であり、\n   それだけで意味を担う情報には使わないこと。** */\n/* --gd-bg-* は「塗り」専用の超淡色。表の地・装飾枠の地・フローの箱の地に使う。\n   **2026-09-29 から `{ltltBlue:…}`（極淡）として手でも書ける**（利用者決定。\n   2026-09-18 の「書ける名前にしない」を差し替えた）。ただし**文字色にはしない**。\n   超淡色の文字は白地で 1.1:1 前後になり読めないため、極淡は**地（ハイライト）**として描く。\n   極濃（--gd-c-dkdk*）は計算で詰めた値:\n     ライト系: 全ライト系の地に対して 11:1 以上（白抜きにすると 12.9:1 以上）\n     ダーク系: 全ダーク系の地に対して 3.0:1 以上（AA Large の下限。ライト系の淡と同じ扱い）、\n               かつ白抜きで 4.6:1 以上。**地との比と白抜きの比が両立する明度（L≈0.175）に置いた。**\n               これより暗くすると地に沈み、明るくすると白抜きが読めなくなる */\n:root {\n    --gd-c-red: #d93025;  --gd-c-blue: #1a73e8; --gd-c-green: #188038; --gd-c-orange: #c25e00;\n    --gd-c-purple: #8430ce; --gd-c-gray: #5f6368; --gd-c-teal: #00796b; --gd-c-pink: #c2185b;\n    --gd-c-yellow: #8a6d00;\n    --gd-c-dkred: #942119; --gd-raw-ltred: #e26057; --gd-c-dkblue: #124e9e; --gd-raw-ltblue: #3f89ec;\n    --gd-c-dkgreen: #105726; --gd-raw-ltgreen: #469960; --gd-c-dkorange: #844000; --gd-raw-ltorange: #ca7321;\n    --gd-c-dkpurple: #5a218c; --gd-raw-ltpurple: #aa70dd; --gd-c-dkgray: #414347; --gd-raw-ltgray: #878a8e;\n    --gd-c-dkteal: #005249; --gd-raw-ltteal: #3b988d; --gd-c-dkpink: #84103e; --gd-raw-ltpink: #d6628f;\n    --gd-c-dkyellow: #5c4800; --gd-raw-ltyellow: #b79200;\n    --gd-c-dkdkred: #601510; --gd-c-dkdkblue: #0b3062; --gd-c-dkdkgreen: #0b3919; --gd-c-dkdkorange: #4f2600;\n    --gd-c-dkdkpurple: #45196c; --gd-c-dkdkgray: #2f3134; --gd-c-dkdkteal: #003832; --gd-c-dkdkpink: #620c2e;\n    --gd-c-dkdkyellow: #3d3000;\n    --gd-raw-bg-red: #fff5f5; --gd-raw-bg-blue: #ebf8ff; --gd-raw-bg-green: #f0fff4; --gd-raw-bg-orange: #fffaf0;\n    --gd-raw-bg-purple: #faf5ff; --gd-raw-bg-gray: #f7fafc; --gd-raw-bg-teal: #effcf9; --gd-raw-bg-pink: #fff5f8;\n    --gd-raw-bg-yellow: #fffbeb;\n}\nbody.theme-dark {\n    --gd-c-red: #ff6b5e;  --gd-c-blue: #7cb0ff; --gd-c-green: #6ddf8f; --gd-c-orange: #ffab5e;\n    --gd-c-purple: #d0a2ff; --gd-c-gray: #a8adb3; --gd-c-teal: #5fd4c4; --gd-c-pink: #ff8fb1;\n    --gd-c-yellow: #d4ad3f;\n    --gd-c-dkred: #e05e53; --gd-raw-ltred: #ff9a92; --gd-c-dkblue: #6189c7; --gd-raw-ltblue: #a6c9ff;\n    --gd-c-dkgreen: #4a9861; --gd-raw-ltgreen: #9ce9b3; --gd-c-dkorange: #b87b44; --gd-raw-ltorange: #ffc692;\n    --gd-c-dkpurple: #9c7abf; --gd-raw-ltpurple: #dfc0ff; --gd-c-dkgray: #85898d; --gd-raw-ltgray: #c4c7cb;\n    --gd-c-dkteal: #43978b; --gd-raw-ltteal: #92e2d7; --gd-c-dkpink: #c46e88; --gd-raw-ltpink: #ffb3ca;\n    --gd-c-dkyellow: #a98c30; --gd-raw-ltyellow: #e5cf8d;\n    --gd-c-dkdkred: #c05047; --gd-c-dkdkblue: #5375aa; --gd-c-dkdkgreen: #3f8152; --gd-c-dkdkorange: #9c693a;\n    --gd-c-dkdkpurple: #8568a2; --gd-c-dkdkgray: #717478; --gd-c-dkdkteal: #397f75; --gd-c-dkdkpink: #a75e74;\n    --gd-c-dkdkyellow: #897227;\n    /* ダーク系の塗りは「地よりわずかに明るい色相付き」。明るくしすぎると\n       ページの地から浮いて、ライト系の紙を貼ったように見える。 */\n    --gd-raw-bg-red: #2c1d1d; --gd-raw-bg-blue: #1b2430; --gd-raw-bg-green: #1b2a20; --gd-raw-bg-orange: #2c231a;\n    --gd-raw-bg-purple: #26203a; --gd-raw-bg-gray: #262626; --gd-raw-bg-teal: #172a28; --gd-raw-bg-pink: #2d1e26;\n    --gd-raw-bg-yellow: #2b2718;\n}\n/* 塗りだけはセピア系にも専用値を置く。文字色（--gd-c-*）は :root を継ぐままでよいが、\n   塗りは面積が大きく、白に近い値を敷くと地（#f4ecd8 前後）の上で「紙を貼った」ように浮く。 */\nbody.theme-sepia {\n    --gd-raw-bg-red: #f7e3dc; --gd-raw-bg-blue: #e4eaef; --gd-raw-bg-green: #e8eedb; --gd-raw-bg-orange: #f7e8d2;\n    --gd-raw-bg-purple: #ece4ee; --gd-raw-bg-gray: #ebe5d8; --gd-raw-bg-teal: #e3eee9; --gd-raw-bg-pink: #f6e2e6;\n    --gd-raw-bg-yellow: #f6eece;\n}\n/* ---------- 淡い3段（極淡 ltlt・淡 lt・やや淡 ltdk）は計算で作る（v0.3.17j） ----------\n   テーマごとの固定値は --gd-raw-* に置き、ここで設定パネルのスライダ（淡い色の濃さ）の比率を掛ける。\n   100%（--gd-tone-up / --gd-tone-down が両方 0%）のときは --gd-raw-* そのもの＝これまでと同じ色。\n   下げると3段そろって地の色（--bg-color）へ寄り、上げると3段そろって1つ濃い段へ寄る\n   （極淡→淡、淡→やや淡、やや淡→標準）。3段の並び順は崩れない。\n   **body に置くこと。** :root に置くと、ダーク系（body.theme-dark が --gd-raw-* を上書きする）でも\n   :root で解決したライト系の値が受け継がれてしまう。\n   やや淡（ltdk）は淡と標準の中間、やや濃（dklt）は標準と濃の中間。dklt はスライダの対象外。 */\n:root { --gd-tone-up: 0%; --gd-tone-down: 0%; }\nbody {\n    --gd-raw-ltdkred: color-mix(in srgb, var(--gd-c-red) 50%, var(--gd-raw-ltred));\n    --gd-bg-red: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltred) var(--gd-tone-up), var(--gd-raw-bg-red)));\n    --gd-c-ltred: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltdkred) var(--gd-tone-up), var(--gd-raw-ltred)));\n    --gd-c-ltdkred: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-c-red) var(--gd-tone-up), var(--gd-raw-ltdkred)));\n    --gd-c-dkltred: color-mix(in srgb, var(--gd-c-red) 50%, var(--gd-c-dkred));\n    --gd-raw-ltdkblue: color-mix(in srgb, var(--gd-c-blue) 50%, var(--gd-raw-ltblue));\n    --gd-bg-blue: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltblue) var(--gd-tone-up), var(--gd-raw-bg-blue)));\n    --gd-c-ltblue: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltdkblue) var(--gd-tone-up), var(--gd-raw-ltblue)));\n    --gd-c-ltdkblue: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-c-blue) var(--gd-tone-up), var(--gd-raw-ltdkblue)));\n    --gd-c-dkltblue: color-mix(in srgb, var(--gd-c-blue) 50%, var(--gd-c-dkblue));\n    --gd-raw-ltdkgreen: color-mix(in srgb, var(--gd-c-green) 50%, var(--gd-raw-ltgreen));\n    --gd-bg-green: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltgreen) var(--gd-tone-up), var(--gd-raw-bg-green)));\n    --gd-c-ltgreen: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltdkgreen) var(--gd-tone-up), var(--gd-raw-ltgreen)));\n    --gd-c-ltdkgreen: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-c-green) var(--gd-tone-up), var(--gd-raw-ltdkgreen)));\n    --gd-c-dkltgreen: color-mix(in srgb, var(--gd-c-green) 50%, var(--gd-c-dkgreen));\n    --gd-raw-ltdkorange: color-mix(in srgb, var(--gd-c-orange) 50%, var(--gd-raw-ltorange));\n    --gd-bg-orange: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltorange) var(--gd-tone-up), var(--gd-raw-bg-orange)));\n    --gd-c-ltorange: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltdkorange) var(--gd-tone-up), var(--gd-raw-ltorange)));\n    --gd-c-ltdkorange: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-c-orange) var(--gd-tone-up), var(--gd-raw-ltdkorange)));\n    --gd-c-dkltorange: color-mix(in srgb, var(--gd-c-orange) 50%, var(--gd-c-dkorange));\n    --gd-raw-ltdkpurple: color-mix(in srgb, var(--gd-c-purple) 50%, var(--gd-raw-ltpurple));\n    --gd-bg-purple: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltpurple) var(--gd-tone-up), var(--gd-raw-bg-purple)));\n    --gd-c-ltpurple: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltdkpurple) var(--gd-tone-up), var(--gd-raw-ltpurple)));\n    --gd-c-ltdkpurple: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-c-purple) var(--gd-tone-up), var(--gd-raw-ltdkpurple)));\n    --gd-c-dkltpurple: color-mix(in srgb, var(--gd-c-purple) 50%, var(--gd-c-dkpurple));\n    --gd-raw-ltdkgray: color-mix(in srgb, var(--gd-c-gray) 50%, var(--gd-raw-ltgray));\n    --gd-bg-gray: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltgray) var(--gd-tone-up), var(--gd-raw-bg-gray)));\n    --gd-c-ltgray: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltdkgray) var(--gd-tone-up), var(--gd-raw-ltgray)));\n    --gd-c-ltdkgray: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-c-gray) var(--gd-tone-up), var(--gd-raw-ltdkgray)));\n    --gd-c-dkltgray: color-mix(in srgb, var(--gd-c-gray) 50%, var(--gd-c-dkgray));\n    --gd-raw-ltdkteal: color-mix(in srgb, var(--gd-c-teal) 50%, var(--gd-raw-ltteal));\n    --gd-bg-teal: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltteal) var(--gd-tone-up), var(--gd-raw-bg-teal)));\n    --gd-c-ltteal: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltdkteal) var(--gd-tone-up), var(--gd-raw-ltteal)));\n    --gd-c-ltdkteal: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-c-teal) var(--gd-tone-up), var(--gd-raw-ltdkteal)));\n    --gd-c-dkltteal: color-mix(in srgb, var(--gd-c-teal) 50%, var(--gd-c-dkteal));\n    --gd-raw-ltdkpink: color-mix(in srgb, var(--gd-c-pink) 50%, var(--gd-raw-ltpink));\n    --gd-bg-pink: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltpink) var(--gd-tone-up), var(--gd-raw-bg-pink)));\n    --gd-c-ltpink: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltdkpink) var(--gd-tone-up), var(--gd-raw-ltpink)));\n    --gd-c-ltdkpink: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-c-pink) var(--gd-tone-up), var(--gd-raw-ltdkpink)));\n    --gd-c-dkltpink: color-mix(in srgb, var(--gd-c-pink) 50%, var(--gd-c-dkpink));\n    --gd-raw-ltdkyellow: color-mix(in srgb, var(--gd-c-yellow) 50%, var(--gd-raw-ltyellow));\n    --gd-bg-yellow: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltyellow) var(--gd-tone-up), var(--gd-raw-bg-yellow)));\n    --gd-c-ltyellow: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-raw-ltdkyellow) var(--gd-tone-up), var(--gd-raw-ltyellow)));\n    --gd-c-ltdkyellow: color-mix(in srgb, var(--bg-color) var(--gd-tone-down), color-mix(in srgb, var(--gd-c-yellow) var(--gd-tone-up), var(--gd-raw-ltdkyellow)));\n    --gd-c-dkltyellow: color-mix(in srgb, var(--gd-c-yellow) 50%, var(--gd-c-dkyellow));\n}\n/* やや淡（ltdk）・やや濃（dklt）の文字色。 */\n.gd-c-ltdkred { color: var(--gd-c-ltdkred); } .gd-c-dkltred { color: var(--gd-c-dkltred); }\n.gd-c-ltdkblue { color: var(--gd-c-ltdkblue); } .gd-c-dkltblue { color: var(--gd-c-dkltblue); }\n.gd-c-ltdkgreen { color: var(--gd-c-ltdkgreen); } .gd-c-dkltgreen { color: var(--gd-c-dkltgreen); }\n.gd-c-ltdkorange { color: var(--gd-c-ltdkorange); } .gd-c-dkltorange { color: var(--gd-c-dkltorange); }\n.gd-c-ltdkpurple { color: var(--gd-c-ltdkpurple); } .gd-c-dkltpurple { color: var(--gd-c-dkltpurple); }\n.gd-c-ltdkgray { color: var(--gd-c-ltdkgray); } .gd-c-dkltgray { color: var(--gd-c-dkltgray); }\n.gd-c-ltdkteal { color: var(--gd-c-ltdkteal); } .gd-c-dkltteal { color: var(--gd-c-dkltteal); }\n.gd-c-ltdkpink { color: var(--gd-c-ltdkpink); } .gd-c-dkltpink { color: var(--gd-c-dkltpink); }\n.gd-c-ltdkyellow { color: var(--gd-c-ltdkyellow); } .gd-c-dkltyellow { color: var(--gd-c-dkltyellow); }\n.gd-c-red { color: var(--gd-c-red); }\n.gd-c-blue { color: var(--gd-c-blue); }\n.gd-c-green { color: var(--gd-c-green); }\n.gd-c-orange { color: var(--gd-c-orange); }\n.gd-c-purple { color: var(--gd-c-purple); }\n.gd-c-gray { color: var(--gd-c-gray); }\n.gd-c-teal { color: var(--gd-c-teal); }\n.gd-c-pink { color: var(--gd-c-pink); }\n.gd-c-yellow { color: var(--gd-c-yellow); }\n.gd-c-dkred { color: var(--gd-c-dkred); }     .gd-c-ltred { color: var(--gd-c-ltred); }\n.gd-c-dkblue { color: var(--gd-c-dkblue); }   .gd-c-ltblue { color: var(--gd-c-ltblue); }\n.gd-c-dkgreen { color: var(--gd-c-dkgreen); } .gd-c-ltgreen { color: var(--gd-c-ltgreen); }\n.gd-c-dkorange { color: var(--gd-c-dkorange); } .gd-c-ltorange { color: var(--gd-c-ltorange); }\n.gd-c-dkpurple { color: var(--gd-c-dkpurple); } .gd-c-ltpurple { color: var(--gd-c-ltpurple); }\n.gd-c-dkgray { color: var(--gd-c-dkgray); }   .gd-c-ltgray { color: var(--gd-c-ltgray); }\n.gd-c-dkteal { color: var(--gd-c-dkteal); }   .gd-c-ltteal { color: var(--gd-c-ltteal); }\n.gd-c-dkpink { color: var(--gd-c-dkpink); }   .gd-c-ltpink { color: var(--gd-c-ltpink); }\n.gd-c-dkyellow { color: var(--gd-c-dkyellow); } .gd-c-ltyellow { color: var(--gd-c-ltyellow); }\n/* 極濃（dkdk）は文字色。 */\n.gd-c-dkdkred { color: var(--gd-c-dkdkred); }\n.gd-c-dkdkblue { color: var(--gd-c-dkdkblue); }\n.gd-c-dkdkgreen { color: var(--gd-c-dkdkgreen); }\n.gd-c-dkdkorange { color: var(--gd-c-dkdkorange); }\n.gd-c-dkdkpurple { color: var(--gd-c-dkdkpurple); }\n.gd-c-dkdkgray { color: var(--gd-c-dkdkgray); }\n.gd-c-dkdkteal { color: var(--gd-c-dkdkteal); }\n.gd-c-dkdkpink { color: var(--gd-c-dkdkpink); }\n.gd-c-dkdkyellow { color: var(--gd-c-dkdkyellow); }\n/* 極淡（ltlt）は**文字色ではなく地**（ハイライト）。文字は本文色のまま。\n   枠囲み [[ltltBlue:…]] では、地に加えて罫線を淡色にする（currentColor だと本文色の枠になる）。\n   padding は .gd-box より前に置くので、枠囲みでは .gd-box の余白が勝つ。 */\n.gd-c-ltltred, .gd-c-ltltblue, .gd-c-ltltgreen, .gd-c-ltltorange, .gd-c-ltltpurple, .gd-c-ltltgray, .gd-c-ltltteal, .gd-c-ltltpink, .gd-c-ltltyellow {\n    border-radius: 3px; padding: 0 0.15em;\n    box-decoration-break: clone; -webkit-box-decoration-break: clone;\n}\n.gd-c-ltltred { background-color: var(--gd-bg-red); }  .gd-box.gd-c-ltltred { border-color: var(--gd-c-ltred); }\n.gd-c-ltltblue { background-color: var(--gd-bg-blue); }  .gd-box.gd-c-ltltblue { border-color: var(--gd-c-ltblue); }\n.gd-c-ltltgreen { background-color: var(--gd-bg-green); }  .gd-box.gd-c-ltltgreen { border-color: var(--gd-c-ltgreen); }\n.gd-c-ltltorange { background-color: var(--gd-bg-orange); }  .gd-box.gd-c-ltltorange { border-color: var(--gd-c-ltorange); }\n.gd-c-ltltpurple { background-color: var(--gd-bg-purple); }  .gd-box.gd-c-ltltpurple { border-color: var(--gd-c-ltpurple); }\n.gd-c-ltltgray { background-color: var(--gd-bg-gray); }  .gd-box.gd-c-ltltgray { border-color: var(--gd-c-ltgray); }\n.gd-c-ltltteal { background-color: var(--gd-bg-teal); }  .gd-box.gd-c-ltltteal { border-color: var(--gd-c-ltteal); }\n.gd-c-ltltpink { background-color: var(--gd-bg-pink); }  .gd-box.gd-c-ltltpink { border-color: var(--gd-c-ltpink); }\n.gd-c-ltltyellow { background-color: var(--gd-bg-yellow); }  .gd-box.gd-c-ltltyellow { border-color: var(--gd-c-ltyellow); }\n/* 枠線は currentColor。色指定が無ければ本文色、あれば gd-c-* が設定した色に自動追従する */\n.gd-box {\n    border: 1px solid currentColor; border-radius: 4px;\n    padding: 0 0.35em; margin: 0 0.1em; display: inline;\n    box-decoration-break: clone; -webkit-box-decoration-break: clone;\n}\n@media print { .gd-box { border-color: #666 !important; } }\nmark { background-color: #ff0; color: #000; padding: 0 2px; }\nu { text-decoration: underline; }\nsub, sup { font-size: 0.8em; }\n/* 取消線（~~文字~~ と HTML の <s>）。ブラウザ既定の太さはフォントの下線メトリクス由来で\n   16px 本文なら約1px しかなく、表の中では「消したのかゴミなのか」が判別しづらい。\n   太さは em 指定にして本文・見出し・表（13px）のどこでも同じ比率で太る。\n   ただし太くしただけだと下の文字が潰れるため、線側を透過させて可読性を戻している。\n   調整はこの3つの変数だけで完結する。\n     --gd-strike-thickness 線の太さ（auto でブラウザ既定＝従来の見た目に戻る）\n     --gd-strike-ink       線の不透明度（75% = 透過率25%）\n     --gd-strike-fade      消した文字自体の不透明度。既定は 100%（＝文字は薄くしない）。\n                           「済んだ項目は後ろへ下がってほしい」なら 75% などにする。\n                           意味を担う情報を薄くすると読めなくなるため、既定では効かせない。 */\n:root { --gd-strike-thickness: 0.125em; --gd-strike-ink: 75%; --gd-strike-fade: 100%; }\ndel, s {\n    text-decoration-line: line-through;\n    text-decoration-thickness: var(--gd-strike-thickness);\n    text-decoration-color: color-mix(in srgb, currentColor var(--gd-strike-ink), transparent);\n    opacity: var(--gd-strike-fade);\n}\n";
-    gnDocRd.BUILT_FROM = "gnDoc.html v0.4.3g";
-    gnDocRd.version = "v0.4.3g";
+    gnDocRd.BUILT_FROM = "gnDoc.html v0.4.3j";
+    gnDocRd.version = "v0.4.3j";
     gnDocRd.checkUpdate = async function (opts) {
         opts = opts || {};
         const LATEST = 'https://raw.githubusercontent.com/take4-commits/gnDoc/main/latest.json';
