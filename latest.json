@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.3l",
-    "date": "2026-11-08",
-    "notes": "設定の 🎨 淡い色の濃さを 2%〜100% で調整できるようにし、印刷と 🔖 PDF にも同じ濃さで出るようにしました。v0.4.3j〜k の枠つきのフロー図の線の通り道・図の覚え書き %%・生成AIのよくある間違いの知らせも入っています",
+    "version": "v0.4.4",
+    "date": "2026-11-13",
+    "notes": "ビュワーの図表（チャート・フロー図など）の右上のツールバー（📋 </> ✏️ など）を、図の上端の外（ツールバーの高さの分だけ上）に出すようにしました。図に重ならなくなります（その場の全画面のときは今までどおり中）",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.3l/gnDoc.exe",
-      "size": 4461568,
-      "sha256": "59427e8e6226f48313f439cae43e094a15a0c67cad4c5fa5cd1abae8ff8c2061"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.4/gnDoc.exe",
+      "size": 4561920,
+      "sha256": "326551e9f6ec6261d029b6939acae78cc31819f06995f44717243f9294622157"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.3l",
+    "version": "v0.4.4",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "848e1fb649183e2492abe22515f651bc268078360eac2092072e5bca438d3756"
+    "sha256": "2b90fee4b938c43362929a449a6ce17ec758cdec81a15a28fdc7620f11c9afd9"
   }
 }
