@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.4c",
+    "version": "v0.4.4l",
     "date": "2026-11-14",
-    "notes": "ビュワーで元の Markdown を見て直せる所を広げました（右クリックの 🔍・装飾枠のツールバー・図やコードブロックは囲みの行ごと）。取扱説明書の冒頭に「gnDoc の地図」、サンプル集の冒頭に組み合わせの見本を足しました",
+    "notes": "表のスタイルセット（形8 × 配色6・部品・用途8・自分の2〜3色・行と列の繰返し）と、見本から選ぶパネル（`Ctrl+Alt+Y`）を足しました。右クリックのメニューを「いつもの段」と「いまいる所で使える段」に整理し、csv-chart に行ごとの色と縦横の比を足しました",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.4c/gnDoc.exe",
-      "size": 4570112,
-      "sha256": "870d51a1cea7a3a803bf0452daac569e397513b677d1517028e54de7997d9051"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.4l/gnDoc.exe",
+      "size": 4603904,
+      "sha256": "fb6ff5d65ccfb1f13f10ac122c6676c19011410e9e551410091f6ab9e3ae24f9"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.4c",
+    "version": "v0.4.4l",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "bee9c8009673183adde09b25b7373b3c1aca3a91e8ecaa6a3dc83ee37884cbd6"
+    "sha256": "9770a5d539d8bfcb10abc976cfa9635aa6adba8a82967b3401bf5006f40b7e77"
   }
 }
