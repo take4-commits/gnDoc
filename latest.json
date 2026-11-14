@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.4",
-    "date": "2026-11-13",
-    "notes": "ビュワーの図表（チャート・フロー図など）の右上のツールバー（📋 </> ✏️ など）を、図の上端の外（ツールバーの高さの分だけ上）に出すようにしました。図に重ならなくなります（その場の全画面のときは今までどおり中）",
+    "version": "v0.4.4c",
+    "date": "2026-11-14",
+    "notes": "ビュワーで元の Markdown を見て直せる所を広げました（右クリックの 🔍・装飾枠のツールバー・図やコードブロックは囲みの行ごと）。取扱説明書の冒頭に「gnDoc の地図」、サンプル集の冒頭に組み合わせの見本を足しました",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.4/gnDoc.exe",
-      "size": 4561920,
-      "sha256": "326551e9f6ec6261d029b6939acae78cc31819f06995f44717243f9294622157"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.4c/gnDoc.exe",
+      "size": 4570112,
+      "sha256": "870d51a1cea7a3a803bf0452daac569e397513b677d1517028e54de7997d9051"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.4",
+    "version": "v0.4.4c",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "2b90fee4b938c43362929a449a6ce17ec758cdec81a15a28fdc7620f11c9afd9"
+    "sha256": "bee9c8009673183adde09b25b7373b3c1aca3a91e8ecaa6a3dc83ee37884cbd6"
   }
 }
