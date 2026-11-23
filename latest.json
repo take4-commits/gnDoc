@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.4l",
-    "date": "2026-11-14",
-    "notes": "表のスタイルセット（形8 × 配色6・部品・用途8・自分の2〜3色・行と列の繰返し）と、見本から選ぶパネル（`Ctrl+Alt+Y`）を足しました。右クリックのメニューを「いつもの段」と「いまいる所で使える段」に整理し、csv-chart に行ごとの色と縦横の比を足しました",
+    "version": "v0.4.5h",
+    "date": "2026-11-23",
+    "notes": "複数カーソルを入れました（VS Code と同じキー: Ctrl+D 次の同じ字・Ctrl+Shift+L 全部・Ctrl+Alt+↑↓ 上下の行・Alt+クリック・Shift+Alt+ドラッグで矩形・Esc で1つに。✏️ の窓でも）",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.4l/gnDoc.exe",
-      "size": 4603904,
-      "sha256": "fb6ff5d65ccfb1f13f10ac122c6676c19011410e9e551410091f6ab9e3ae24f9"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.5h/gnDoc.exe",
+      "size": 4695040,
+      "sha256": "9be9d99ceccfe9ef2ea9b229d55277b92b2460640784c0bcfa7dbafe7433d942"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.4l",
+    "version": "v0.4.5h",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "9770a5d539d8bfcb10abc976cfa9635aa6adba8a82967b3401bf5006f40b7e77"
+    "sha256": "513c2c5815b6f2d74752d1ab6ff84319c730d9b32b17c141767cbe66d16c6138"
   }
 }
