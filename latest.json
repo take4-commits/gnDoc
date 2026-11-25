@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.5h",
-    "date": "2026-11-23",
-    "notes": "複数カーソルを入れました（VS Code と同じキー: Ctrl+D 次の同じ字・Ctrl+Shift+L 全部・Ctrl+Alt+↑↓ 上下の行・Alt+クリック・Shift+Alt+ドラッグで矩形・Esc で1つに。✏️ の窓でも）",
+    "version": "v0.4.5r",
+    "date": "2026-11-25",
+    "notes": "💾🌐 の HTML 書き出しに gnDocView 版（`資料.html` と `files/`）を足し、書き出す HTML を小さくしました（80KB の文書で 820KB → 270KB 以下）。gnDocView 版は段落のトリプルクリックで読み上げます",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.5h/gnDoc.exe",
-      "size": 4695040,
-      "sha256": "9be9d99ceccfe9ef2ea9b229d55277b92b2460640784c0bcfa7dbafe7433d942"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.5r/gnDoc.exe",
+      "size": 4520960,
+      "sha256": "3901519d15213ed93d4287c2b446e1f57c4347b7946f35bec33e6e6ae4569ef1"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.5h",
+    "version": "v0.4.5r",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "513c2c5815b6f2d74752d1ab6ff84319c730d9b32b17c141767cbe66d16c6138"
+    "sha256": "483f5f4d05988a605375ac83d17acc970726f15a52271d17a236556fbd09c494"
   }
 }

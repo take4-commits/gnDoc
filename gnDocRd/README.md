@@ -8,6 +8,7 @@ gnDoc の Markdown（色・枠・フロー図・部品・Mermaid・数式・グ�
 | --- | --- |
 | `gnDocRd.js` | 描画ライブラリ本体 |
 | `gnDocRd.min.js` | 同じ物を縮めた版（どちらか一方を使う） |
+| `gnDocView.js` | gnDoc の 💾🌐「gnDocView 版」で書き出した HTML を読む部品（`files/` の中に入る物と同じ）。目次・折りたたみ・コメントの吹き出しを動かします。Markdown は描きません（描くのは `gnDocRd.js`） |
 | `gnDocRd-sample.html` | 使い方の見本。中に Markdown が入っていて、開くと gnDoc と同じ見た目で描かれます。書き換えて自分のページにできます |
 | `gnDocRdLibGen.html` | 頼るライブラリ `gnDocRd-libs.js` を作る画面 |
 | `LICENSE` | MIT License の全文 |
