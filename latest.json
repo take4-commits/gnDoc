@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.5r",
-    "date": "2026-11-25",
-    "notes": "💾🌐 の HTML 書き出しに gnDocView 版（`資料.html` と `files/`）を足し、書き出す HTML を小さくしました（80KB の文書で 820KB → 270KB 以下）。gnDocView 版は段落のトリプルクリックで読み上げます",
+    "version": "v0.4.5x",
+    "date": "2026-11-26",
+    "notes": "gnDocView 版の HTML で、gnDoc が無い人もコメントを書けるようにしました。コメント票（.md）のファイルの往復で、レビューと質疑応答ができます（字を選んで 💬・届いた票を落とすと返信と解決が出る）",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.5r/gnDoc.exe",
-      "size": 4520960,
-      "sha256": "3901519d15213ed93d4287c2b446e1f57c4347b7946f35bec33e6e6ae4569ef1"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.5x/gnDoc.exe",
+      "size": 4546560,
+      "sha256": "73aad52bc42b88485b40c2e3d1927ef07079f9be12dc05f0c4be04db0f0fc6d8"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.5r",
+    "version": "v0.4.5x",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "483f5f4d05988a605375ac83d17acc970726f15a52271d17a236556fbd09c494"
+    "sha256": "d7b84a7e46975aeaa7192f3210c1d8f4196ae2da3f8ed8d19f302c317b282371"
   }
 }
