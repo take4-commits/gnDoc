@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.6g",
+    "version": "v0.4.6h",
     "date": "2026-11-27",
-    "notes": "状態の移り変わりの図を flow のマス目で描けるようにし、画像をダブルクリックで全画面に。倍率の違う画面で exe の窓と中身の大きさが合わないのも直しました",
+    "notes": "gnDocView 版の HTML で、Mermaid の図の箱の字が右で切れていたのを直しました（図の SVG に、画面で描いた書体を書き込みます）",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.6g/gnDoc.exe",
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.6h/gnDoc.exe",
       "size": 4582400,
-      "sha256": "70059b6fb67be62cbf0400a2ec391aaeab0720227421f752480fa7493ad6cbcf"
+      "sha256": "1f19946c3733309cb4909dcd13f10839bcb8eba743f3dcc7e55e5dcb46694d54"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.6g",
+    "version": "v0.4.6h",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "7c53523a674eecbcc173eca08a2791b3f40152755ecd1e8aa96a497c5182ec41"
+    "sha256": "c528be2cfed194bdd6a842b5818794c7362595a761fe9bfe1dd1c20cec8518fa"
   }
 }
