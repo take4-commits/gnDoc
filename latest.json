@@ -1,17 +1,17 @@
 {
   "gnDoc": {
-    "version": "v0.4.5x",
-    "date": "2026-11-26",
-    "notes": "gnDocView 版の HTML で、gnDoc が無い人もコメントを書けるようにしました。コメント票（.md）のファイルの往復で、レビューと質疑応答ができます（字を選んで 💬・届いた票を落とすと返信と解決が出る）",
+    "version": "v0.4.6g",
+    "date": "2026-11-27",
+    "notes": "状態の移り変わりの図を flow のマス目で描けるようにし、画像をダブルクリックで全画面に。倍率の違う画面で exe の窓と中身の大きさが合わないのも直しました",
     "exe": {
-      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.5x/gnDoc.exe",
-      "size": 4546560,
-      "sha256": "73aad52bc42b88485b40c2e3d1927ef07079f9be12dc05f0c4be04db0f0fc6d8"
+      "url": "https://github.com/take4-commits/gnDoc/releases/download/v0.4.6g/gnDoc.exe",
+      "size": 4582400,
+      "sha256": "70059b6fb67be62cbf0400a2ec391aaeab0720227421f752480fa7493ad6cbcf"
     }
   },
   "gnDocRd": {
-    "version": "v0.4.5x",
+    "version": "v0.4.6g",
     "url": "https://raw.githubusercontent.com/take4-commits/gnDoc/main/gnDocRd/gnDocRd.js",
-    "sha256": "d7b84a7e46975aeaa7192f3210c1d8f4196ae2da3f8ed8d19f302c317b282371"
+    "sha256": "7c53523a674eecbcc173eca08a2791b3f40152755ecd1e8aa96a497c5182ec41"
   }
 }
